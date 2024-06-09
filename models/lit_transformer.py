@@ -3,7 +3,7 @@ import os
 import lightning as L
 import torch
 import torch.nn as nn
-import torchmetrics
+from torchmetrics.text import BLEUScore, CharErrorRate, WordErrorRate
 from models.transformer import ProjectionLayer, Transformer, build_transformer
 from utils import casual_mask
 
@@ -61,7 +61,7 @@ class LT_model(L.LightningModule):
         tokenizer_tgt (Tokenizer): Target tokenizer.
     """
 
-    def __init__(self, config, tokenizer_src, tokenizer_tgt):
+    def __init__(self, config, tokenizer_src, tokenizer_tgt, one_cycle_best_LR=0.01):
         super().__init__()
         self.config = config
         self.tokenizer_src = tokenizer_src
@@ -69,14 +69,16 @@ class LT_model(L.LightningModule):
         self.src_vocab_size = self.tokenizer_src.get_vocab_size()
         self.tgt_vocab_size = self.tokenizer_tgt.get_vocab_size()
         self.model = get_model(config, self.src_vocab_size, self.tgt_vocab_size)
+        
+        self.one_cycle_best_LR = one_cycle_best_LR
 
         self.source_texts = []
         self.expected = []
         self.predicted = []
 
-        self.cer_metric = torchmetrics.CharErrorRate()
-        self.wer_metric = torchmetrics.WordErrorRate()
-        self.bleu_metric = torchmetrics.BLEUScore()
+        self.cer_metric = CharErrorRate()
+        self.wer_metric = WordErrorRate()
+        self.bleu_metric = BLEUScore()
 
         self.save_hyperparameters()
 
