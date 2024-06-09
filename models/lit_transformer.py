@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torchmetrics
 from models.transformer import ProjectionLayer, Transformer, build_transformer
-from utils.utils import casual_mask
+from utils import casual_mask
 
 import random
 
