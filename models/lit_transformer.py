@@ -76,6 +76,8 @@ class LT_model(L.LightningModule):
         self.source_texts = []
         self.expected = []
         self.predicted = []
+        
+        self.training_step_outputs = []
 
         self.cer_metric = CharErrorRate()
         self.wer_metric = WordErrorRate()
