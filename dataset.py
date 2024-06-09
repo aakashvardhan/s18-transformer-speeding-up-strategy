@@ -10,6 +10,7 @@ from tokenizers import Tokenizer
 from tokenizers.models import WordLevel
 from tokenizers.trainers import WordLevelTrainer
 from tokenizers.pre_tokenizers import Whitespace
+import utils.utils as utils
 
 def get_all_sentenses(ds, lang):
     for item in ds:
@@ -201,15 +202,11 @@ class BillingualDataset(Dataset):
         return {
             "encoder_input": encoder_input,
             "decoder_input": decoder_input,
-            "encoder_mask": (encoder_input != self.pad_token)
-            .unsqueeze(0)
-            .unsqueeze(0)
-            .int(),
-            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int()
-            & casual_mask(decoder_input.size(0)),
             "label": label,
             "src_text": src_text,
             "tgt_text": tgt_text,
+            "encoder_str_length": len(enc_input_tokens),
+            "decoder_str_length": len(dec_input_tokens),
         }
 
 
@@ -282,6 +279,9 @@ class LT_DataModule(L.LightningDataModule):
 
     def val_dataloader(self):
         return DataLoader(self.val_ds, batch_size=1, shuffle=True)
+    
+    def collate_fn(self, batch):
+        return utils.dynamic_collate_fn(batch, self.tokenizer_tgt)
 
     def get_tokenizers(self):
         """
