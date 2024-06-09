@@ -2,7 +2,7 @@ from pathlib import Path
 
 def get_config():
     return {
-        "batch_size": 32,
+        "batch_size": 16,
         "precision": "16-mixed",
         "accelerator": "cuda",
         "progress_bar_refresh_rate": 10,

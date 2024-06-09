@@ -87,7 +87,7 @@ def main(cfg, ckpt_file=None, if_ckpt=False):
                 save_last=True,
             ),
             LearningRateMonitor(logging_interval="step", log_momentum=True),
-            EarlyStopping(monitor="train_loss", mode="min", stopping_threshold=0.15),
+            EarlyStopping(monitor="train_loss", mode="min", stopping_threshold=1.7),
             TQDMProgressBar(refresh_rate=10),
         ],
         gradient_clip_val=0.5,
