@@ -70,6 +70,7 @@ class LT_model(L.LightningModule):
         self.tgt_vocab_size = self.tokenizer_tgt.get_vocab_size()
         self.model = get_model(config, self.src_vocab_size, self.tgt_vocab_size)
         
+        self.learning_rate = config["lr"]
         self.one_cycle_best_LR = one_cycle_best_LR
 
         self.source_texts = []
@@ -166,7 +167,7 @@ class LT_model(L.LightningModule):
             Optimizer: The optimizer.
         """
         optimizer = torch.optim.Adam(
-            self.model.parameters(), lr=self.config["lr"], eps=1e-9
+            self.model.parameters(), lr=self.learning_rate, eps=1e-9
         )
 
         dataloader = self.trainer.datamodule.train_dataloader()
