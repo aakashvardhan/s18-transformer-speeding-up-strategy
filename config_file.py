@@ -10,6 +10,7 @@ def get_config():
         "num_iter": 100,
         "lr": 10**-4,
         "seq_len": 350,
+        "n_workers": 4,
         "num_examples": 3,
         "one_cycle_best_lr":0.01,
         "d_model": 512,

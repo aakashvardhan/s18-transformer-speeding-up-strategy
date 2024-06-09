@@ -167,8 +167,7 @@ class LT_model(L.LightningModule):
             self.model.parameters(), lr=self.config["lr"], eps=1e-9
         )
 
-        self.trainer.fit_loop.setup_data()
-        dataloader = self.trainer.fit_loop.train_dataloader
+        dataloader = self.trainer.datamodule.train_dataloader
 
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer,

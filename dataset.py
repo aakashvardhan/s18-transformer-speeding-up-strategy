@@ -285,11 +285,12 @@ class LT_DataModule(L.LightningDataModule):
             batch_size=self.config["batch_size"],
             shuffle=True,
             collate_fn=self.collate_fn,
+            num_workers=self.config["n_workers"],
         )
 
     def val_dataloader(self):
         return DataLoader(
-            self.val_ds, batch_size=1, shuffle=True, collate_fn=self.collate_fn
+            self.val_ds, batch_size=1, shuffle=True, collate_fn=self.collate_fn, num_workers=self.config["n_workers"]
         )
 
     def collate_fn(self, batch):
