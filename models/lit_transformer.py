@@ -115,7 +115,7 @@ class LT_model(L.LightningModule):
     def loss_fn(self, proj_output, label):
         # Define the loss function
         loss_fn = nn.CrossEntropyLoss(
-            ignore_index=self.tk_tgt.token_to_id("[PAD]"), label_smoothing=0.1
+            ignore_index=self.tokenizer_tgt.token_to_id("[PAD]"), label_smoothing=0.1
         )
         loss = loss_fn(proj_output.view(-1, self.tgt_vocab_size), label.view(-1))
         return loss
