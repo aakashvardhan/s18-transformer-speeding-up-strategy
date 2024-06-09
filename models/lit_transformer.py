@@ -4,8 +4,8 @@ import lightning as L
 import torch
 import torch.nn as nn
 import torchmetrics
-from transformer import ProjectionLayer, Transformer, build_transformer
-from dataset import casual_mask
+from models.transformer import ProjectionLayer, Transformer, build_transformer
+from utils.utils import casual_mask
 
 import random
 

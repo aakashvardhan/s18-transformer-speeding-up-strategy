@@ -23,7 +23,9 @@ from torch.utils.data import DataLoader, Dataset, random_split
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 from config_file import get_config, get_weights_file_path
-from dataset import BillingualDataset, LT_DataModule, casual_mask
+from dataset import BillingualDataset, LT_DataModule
+
+from utils.utils import dynamic_collate_fn, casual_mask
 
 import torch.nn as nn
 from models.lit_transformer import LT_model

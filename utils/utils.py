@@ -6,7 +6,6 @@ from tokenizers.pre_tokenizers import Whitespace
 from pathlib import Path
 from datasets import load_dataset
 from torch.utils.data import random_split
-from dataset import casual_mask
 
 def dynamic_collate_fn(batch, tokenizer_tgt):
     # Dynamic batch padding
@@ -91,3 +90,18 @@ def dynamic_collate_fn(batch, tokenizer_tgt):
         "src_text": src_texts,
         "tgt_text": tgt_texts,
     }
+    
+
+def casual_mask(size):
+    """
+    Generate a causal mask for self-attention mechanism.
+
+    Args:
+        size (int): The size of the mask.
+
+    Returns:
+        torch.Tensor: The causal mask with shape (1, size, size), where the upper triangle values are set to 0 and the lower triangle values are set to 1.
+
+    """
+    mask = torch.triu(torch.ones((1, size, size)), diagonal=1).type(torch.int)
+    return mask == 0
