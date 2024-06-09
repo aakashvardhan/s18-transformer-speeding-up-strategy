@@ -12,6 +12,7 @@ from tokenizers.trainers import WordLevelTrainer
 from tokenizers.pre_tokenizers import Whitespace
 import utils.utils as utils
 
+
 def get_all_sentenses(ds, lang):
     for item in ds:
         yield item["translation"][lang]
@@ -75,6 +76,8 @@ def get_ds(config):
     val_dataloader = DataLoader(val_ds, batch_size=1, shuffle=True)
 
     return train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt
+
+
 class BillingualDataset(Dataset):
     """
     A PyTorch dataset for handling bilingual text data.
@@ -235,10 +238,12 @@ class LT_DataModule(L.LightningDataModule):
         self.config = config
 
     def setup(self, stage=None):
-        
+
         if stage == "fit" or stage is None:
             ds_raw = load_dataset(
-            "opus_books", f"{self.config['lang_src']}-{self.config['lang_tgt']}", split="train"
+                "opus_books",
+                f"{self.config['lang_src']}-{self.config['lang_tgt']}",
+                split="train",
             )
 
             src_lang = self.config["lang_src"]
@@ -250,13 +255,25 @@ class LT_DataModule(L.LightningDataModule):
 
             train_ds_size = int(0.9 * len(ds_raw))
             val_ds_size = len(ds_raw) - train_ds_size
-            train_ds_raw, val_ds_raw = random_split(ds_raw, [train_ds_size, val_ds_size])
+            train_ds_raw, val_ds_raw = random_split(
+                ds_raw, [train_ds_size, val_ds_size]
+            )
 
             self.train_ds = BillingualDataset(
-                train_ds_raw, self.tokenizer_src, self.tokenizer_tgt, src_lang, tgt_lang, seq_len
+                train_ds_raw,
+                self.tokenizer_src,
+                self.tokenizer_tgt,
+                src_lang,
+                tgt_lang,
+                seq_len,
             )
             self.val_ds = BillingualDataset(
-                val_ds_raw, self.tokenizer_src, self.tokenizer_tgt, src_lang, tgt_lang, seq_len
+                val_ds_raw,
+                self.tokenizer_src,
+                self.tokenizer_tgt,
+                src_lang,
+                tgt_lang,
+                seq_len,
             )
 
             max_len_src = 0
@@ -275,12 +292,29 @@ class LT_DataModule(L.LightningDataModule):
         """
         This function is likely intended to create a data loader for training a machine learning model.
         """
-        return DataLoader(self.train_ds, batch_size=self.config["batch_size"], shuffle=True)
+        return DataLoader(
+            self.train_ds,
+            batch_size=self.config["batch_size"],
+            shuffle=True,
+            collate_fn=self.collate_fn,
+        )
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1, shuffle=True)
-    
+        return DataLoader(
+            self.val_ds, batch_size=1, shuffle=True, collate_fn=self.collate_fn
+        )
+
     def collate_fn(self, batch):
+        """
+        Collates a batch of data samples.
+
+        Args:
+            batch (list): A list of data samples.
+
+        Returns:
+            torch.Tensor: The collated batch.
+
+        """
         return utils.dynamic_collate_fn(batch, self.tokenizer_tgt)
 
     def get_tokenizers(self):
