@@ -123,7 +123,7 @@ def main(cfg, ckpt_file=None, if_ckpt=False):
 
     # Train the model
 
-    model.one_cycle_best_lr = suggested_lr
+    model.one_cycle_best_LR = suggested_lr
 
     if if_ckpt:
         trainer.fit(model=model, datamodule=datamodule, ckpt_path=ckpt_file)
