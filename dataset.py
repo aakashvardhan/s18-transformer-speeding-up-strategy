@@ -11,6 +11,7 @@ from tokenizers.models import WordLevel
 from tokenizers.trainers import WordLevelTrainer
 from tokenizers.pre_tokenizers import Whitespace
 import utils as utils
+from utils import casual_mask
 
 
 def get_all_sentenses(ds, lang):
@@ -205,6 +206,8 @@ class BillingualDataset(Dataset):
         return {
             "encoder_input": encoder_input,
             "decoder_input": decoder_input,
+            "encoder_mask": (encoder_input != self.pad_token).unsqueeze(0).unsqueeze(0).int(), 
+            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int() & causal_mask(decoder_input.size(0)),
             "label": label,
             "src_text": src_text,
             "tgt_text": tgt_text,
