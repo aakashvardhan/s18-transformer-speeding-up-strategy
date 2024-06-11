@@ -86,7 +86,7 @@ def main(cfg, ckpt_file=None, if_ckpt=False):
         sync_batchnorm=True,
         enable_progress_bar=True,
         log_every_n_steps=5,
-        check_val_every_n_epoch=2,
+        check_val_every_n_epoch=9,
         limit_val_batches=1000,
     )
 
