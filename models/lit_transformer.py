@@ -57,7 +57,7 @@ def get_model(config, src_vocab_size, tgt_vocab_size):
     """
     return build_transformer(src_vocab_size, tgt_vocab_size, config["seq_len"], config["seq_len"], d_model=config["d_model"])
 
-class LTModel(L.LightningModule):
+class LT_model(L.LightningModule):
     """
     LightningModule for the LTModel.
 
