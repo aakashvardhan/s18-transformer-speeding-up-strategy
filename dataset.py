@@ -184,30 +184,47 @@ class LTDataModule(L.LightningDataModule):
 
         return tokenizer
 
-
     def setup(self, stage=None):
 
         if stage == "fit" or stage is None:
             ds_raw = load_dataset(
-            "opus_books", f"{self.config['lang_src']}-{self.config['lang_tgt']}", split="train"
+                "opus_books",
+                f"{self.config['lang_src']}-{self.config['lang_tgt']}",
+                split="train",
             )
 
             src_lang = self.config["lang_src"]
             tgt_lang = self.config["lang_tgt"]
             seq_len = self.config["seq_len"]
 
-            self.tokenizer_src = self.get_or_build_tokenizer(self.config, ds_raw, src_lang)
-            self.tokenizer_tgt = self.get_or_build_tokenizer(self.config, ds_raw, tgt_lang)
+            self.tokenizer_src = self.get_or_build_tokenizer(
+                self.config, ds_raw, src_lang
+            )
+            self.tokenizer_tgt = self.get_or_build_tokenizer(
+                self.config, ds_raw, tgt_lang
+            )
 
             train_ds_size = int(0.9 * len(ds_raw))
             val_ds_size = len(ds_raw) - train_ds_size
-            train_ds_raw, val_ds_raw = random_split(ds_raw, [train_ds_size, val_ds_size])
+            train_ds_raw, val_ds_raw = random_split(
+                ds_raw, [train_ds_size, val_ds_size]
+            )
 
             self.train_ds = BillingualDataset(
-                train_ds_raw, self.tokenizer_src, self.tokenizer_tgt, src_lang, tgt_lang, seq_len
+                train_ds_raw,
+                self.tokenizer_src,
+                self.tokenizer_tgt,
+                src_lang,
+                tgt_lang,
+                seq_len,
             )
             self.val_ds = BillingualDataset(
-                val_ds_raw, self.tokenizer_src, self.tokenizer_tgt, src_lang, tgt_lang, seq_len
+                val_ds_raw,
+                self.tokenizer_src,
+                self.tokenizer_tgt,
+                src_lang,
+                tgt_lang,
+                seq_len,
             )
 
             max_len_src = 0
