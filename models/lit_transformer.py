@@ -248,6 +248,11 @@ class LTModel(L.LightningModule):
         """
         encoder_input = batch["encoder_input"]
         encoder_mask = batch["encoder_mask"]
+        
+        # debug the encoder_input and encoder_mask
+        print("encoder_input: ", encoder_input)
+        print("encoder_mask: ", encoder_mask)
+        
         model_out = self.greedy_decode(
             self.model,
             encoder_input,
