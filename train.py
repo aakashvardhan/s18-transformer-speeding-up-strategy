@@ -44,7 +44,7 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
     )
 
     if debug:
-        trainer = L.Trainer(fast_dev_run=True)
+        trainer = L.Trainer(fast_dev_run=True, accelerator='cuda',devices='auto')
         # Initialize the model
         model = LTModel(cfg, tokenizer_src=tokenizer_src, tokenizer_tgt=tokenizer_tgt)
         trainer.fit(model=model, datamodule=datamodule)

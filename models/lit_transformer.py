@@ -269,8 +269,9 @@ class LTModel(L.LightningModule):
         target_text = batch["tgt_text"][0]
 
         model_out_text = self.tokenizer_tgt.decode(model_out.detach().cpu().numpy())
-        # debug model_out_text
-        print(f"model_out_text: {model_out_text}")
+        # give an assertion that model_out_text is a string and giving an output
+        assert isinstance(model_out_text, str), "model_out_text is not a string"
+        assert len(model_out_text) > 0, "model_out_text is empty"
         self.source_texts.append(source_text)
         self.expected.append(target_text)
         self.predicted.append(model_out_text)
