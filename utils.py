@@ -46,7 +46,7 @@ def dynamic_collate_fn(batch: list, tokenizer_tgt) -> dict:
             [
                 enc_item,
                 torch.tensor(
-                    pad_token_id * (enc_len - len(enc_item)), dtype=torch.int64
+                    [pad_token_id] * (enc_len - len(enc_item)), dtype=torch.int64
                 ),
             ]
         )
@@ -56,7 +56,7 @@ def dynamic_collate_fn(batch: list, tokenizer_tgt) -> dict:
             [
                 dec_item,
                 torch.tensor(
-                    pad_token_id * (dec_len - len(dec_item)), dtype=torch.int64
+                    [pad_token_id] * (dec_len - len(dec_item)), dtype=torch.int64
                 ),
             ]
         )
@@ -66,7 +66,7 @@ def dynamic_collate_fn(batch: list, tokenizer_tgt) -> dict:
             [
                 label_item,
                 torch.tensor(
-                    pad_token_id * (dec_len - len(label_item)), dtype=torch.int64
+                    [pad_token_id] * (dec_len - len(label_item)), dtype=torch.int64
                 ),
             ]
         )
