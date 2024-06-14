@@ -8,7 +8,7 @@ def get_config():
         "progress_bar_refresh_rate": 10,
         "num_epochs": 18,
         "num_iter": 100,
-        "lr": 10**-4,
+        "lr": 3e-4,
         "seq_len": 350,
         "n_workers": 4,
         "num_examples": 3,

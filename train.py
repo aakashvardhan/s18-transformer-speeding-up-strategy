@@ -23,10 +23,10 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from config_file import get_config, get_weights_file_path
-from dataset import BillingualDataset, LT_DataModule
-from utils import dynamic_collate_fn, casual_mask
+from dataset import BillingualDataset, LTDataModule
+from utils import dynamic_collate_fn, causal_mask
 import torch.nn as nn
-from models.lit_transformer import LT_model
+from models.lit_transformer import LTModel
 from models.transformer import build_transformer
 
 # Clear CUDA cache and set environment variable
@@ -51,7 +51,7 @@ def main(cfg, ckpt_file=None, if_ckpt=False):
     print("Seed set to 42...")
 
     # Initialize the data module
-    datamodule = LT_DataModule(cfg)
+    datamodule = LTDataModule(cfg)
     datamodule.setup()
     print("DataModule initialized...")
 
@@ -91,7 +91,7 @@ def main(cfg, ckpt_file=None, if_ckpt=False):
     )
 
     # Initialize the model
-    model = LT_model(cfg)
+    model = LTModel(cfg)
 
     # Learning rate finder
     tuner = L.pytorch.tuner.Tuner(trainer)

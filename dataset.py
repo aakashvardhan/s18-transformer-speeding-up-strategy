@@ -10,73 +10,7 @@ from tokenizers import Tokenizer
 from tokenizers.models import WordLevel
 from tokenizers.trainers import WordLevelTrainer
 from tokenizers.pre_tokenizers import Whitespace
-import utils as utils
-from utils import casual_mask
-
-
-def get_all_sentenses(ds, lang):
-    for item in ds:
-        yield item["translation"][lang]
-
-
-def get_or_build_tokenizer(config, ds, lang):
-    tokenizer_path = Path(config["tokenizer_file"].format(lang))
-    if not Path.exists(tokenizer_path):
-        tokenizer = Tokenizer(WordLevel(unk_token="[UNK]"))
-        tokenizer.pre_tokenizer = Whitespace()
-        trainer = WordLevelTrainer(
-            special_tokens=["[UNK]", "[SOS]", "[EOS]", "[PAD]"], min_frequency=2
-        )
-        tokenizer.train_from_iterator(get_all_sentenses(ds, lang), trainer=trainer)
-        tokenizer.save(str(tokenizer_path))
-    else:
-        tokenizer = Tokenizer.from_file(str(tokenizer_path))
-
-    return tokenizer
-
-
-def get_ds(config):
-
-    ds_raw = load_dataset(
-        "opus_books", f"{config['lang_src']}-{config['lang_tgt']}", split="train"
-    )
-
-    src_lang = config["lang_src"]
-    tgt_lang = config["lang_tgt"]
-    seq_len = config["seq_len"]
-
-    tokenizer_src = get_or_build_tokenizer(config, ds_raw, src_lang)
-    tokenizer_tgt = get_or_build_tokenizer(config, ds_raw, tgt_lang)
-
-    train_ds_size = int(0.9 * len(ds_raw))
-    val_ds_size = len(ds_raw) - train_ds_size
-    train_ds_raw, val_ds_raw = random_split(ds_raw, [train_ds_size, val_ds_size])
-
-    train_ds = BillingualDataset(
-        train_ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len
-    )
-    val_ds = BillingualDataset(
-        val_ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len
-    )
-
-    max_len_src = 0
-    max_len_tgt = 0
-
-    for item in ds_raw:
-        src_ids = tokenizer_src.encode(item["translation"][src_lang]).ids
-        tgt_ids = tokenizer_tgt.encode(item["translation"][tgt_lang]).ids
-        max_len_src = max(max_len_src, len(src_ids))
-        max_len_tgt = max(max_len_tgt, len(tgt_ids))
-
-    print(f"Max length of the source sentence : {max_len_src}")
-    print(f"Max length of the source target : {max_len_tgt}")
-
-    train_dataloader = DataLoader(
-        train_ds, batch_size=config["batch_size"], shuffle=True
-    )
-    val_dataloader = DataLoader(val_ds, batch_size=1, shuffle=True)
-
-    return train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt
+from utils import causal_mask, dynamic_collate_fn
 
 
 class BillingualDataset(Dataset):
@@ -206,8 +140,12 @@ class BillingualDataset(Dataset):
         return {
             "encoder_input": encoder_input,
             "decoder_input": decoder_input,
-            "encoder_mask": (encoder_input != self.pad_token).unsqueeze(0).unsqueeze(0).int(), 
-            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int() & casual_mask(decoder_input.size(0)),
+            "encoder_mask": (encoder_input != self.pad_token)
+            .unsqueeze(0)
+            .unsqueeze(0)
+            .int(),
+            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int()
+            & causal_mask(decoder_input.size(0)),
             "label": label,
             "src_text": src_text,
             "tgt_text": tgt_text,
@@ -216,63 +154,68 @@ class BillingualDataset(Dataset):
         }
 
 
-
-
-
-class LT_DataModule(L.LightningDataModule):
+class LTDataModule(L.LightningDataModule):
     """
-    LightningDataModule for handling data loading and processing in the LT_DataModule class.
+    LightningDataModule for handling data loading and processing in the LTDataModule class.
     """
 
     def __init__(self, config):
         super().__init__()
         self.config = config
 
+    def get_all_sentenses(self, ds, lang):
+        for item in ds:
+            yield item["translation"][lang]
+
+    def get_or_build_tokenizer(self, config, ds, lang):
+        tokenizer_path = Path(config["tokenizer_file"].format(lang))
+        if not Path.exists(tokenizer_path):
+            tokenizer = Tokenizer(WordLevel(unk_token="[UNK]"))
+            tokenizer.pre_tokenizer = Whitespace()
+            trainer = WordLevelTrainer(
+                special_tokens=["[UNK]", "[SOS]", "[EOS]", "[PAD]"], min_frequency=2
+            )
+            tokenizer.train_from_iterator(
+                self.get_all_sentenses(ds, lang), trainer=trainer
+            )
+            tokenizer.save(str(tokenizer_path))
+        else:
+            tokenizer = Tokenizer.from_file(str(tokenizer_path))
+
+        return tokenizer
+
+
     def setup(self, stage=None):
 
         if stage == "fit" or stage is None:
             ds_raw = load_dataset(
-                "opus_books",
-                f"{self.config['lang_src']}-{self.config['lang_tgt']}",
-                split="train",
+            "opus_books", f"{self.config['lang_src']}-{self.config['lang_tgt']}", split="train"
             )
 
             src_lang = self.config["lang_src"]
             tgt_lang = self.config["lang_tgt"]
             seq_len = self.config["seq_len"]
 
-            self.tokenizer_src = get_or_build_tokenizer(self.config, ds_raw, src_lang)
-            self.tokenizer_tgt = get_or_build_tokenizer(self.config, ds_raw, tgt_lang)
+            tokenizer_src = self.get_or_build_tokenizer(self.config, ds_raw, src_lang)
+            tokenizer_tgt = self.get_or_build_tokenizer(self.config, ds_raw, tgt_lang)
 
             train_ds_size = int(0.9 * len(ds_raw))
             val_ds_size = len(ds_raw) - train_ds_size
-            train_ds_raw, val_ds_raw = random_split(
-                ds_raw, [train_ds_size, val_ds_size]
-            )
+            train_ds_raw, val_ds_raw = random_split(ds_raw, [train_ds_size, val_ds_size])
 
             self.train_ds = BillingualDataset(
-                train_ds_raw,
-                self.tokenizer_src,
-                self.tokenizer_tgt,
-                src_lang,
-                tgt_lang,
-                seq_len,
+                train_ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len
             )
             self.val_ds = BillingualDataset(
-                val_ds_raw,
-                self.tokenizer_src,
-                self.tokenizer_tgt,
-                src_lang,
-                tgt_lang,
-                seq_len,
+                val_ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len
             )
 
             max_len_src = 0
             max_len_tgt = 0
 
             for item in ds_raw:
-                src_ids = self.tokenizer_src.encode(item["translation"][src_lang]).ids
-                tgt_ids = self.tokenizer_tgt.encode(item["translation"][tgt_lang]).ids
+                src_ids = tokenizer_src.encode(item["translation"][src_lang]).ids
+                tgt_ids = tokenizer_tgt.encode(item["translation"][tgt_lang]).ids
                 max_len_src = max(max_len_src, len(src_ids))
                 max_len_tgt = max(max_len_tgt, len(tgt_ids))
 
@@ -293,7 +236,11 @@ class LT_DataModule(L.LightningDataModule):
 
     def val_dataloader(self):
         return DataLoader(
-            self.val_ds, batch_size=1, shuffle=True, collate_fn=self.collate_fn, num_workers=self.config["n_workers"]
+            self.val_ds,
+            batch_size=1,
+            shuffle=False,
+            collate_fn=self.collate_fn,
+            num_workers=self.config["n_workers"],
         )
 
     def collate_fn(self, batch):
@@ -307,7 +254,7 @@ class LT_DataModule(L.LightningDataModule):
             torch.Tensor: The collated batch.
 
         """
-        return utils.dynamic_collate_fn(batch, self.tokenizer_tgt)
+        return dynamic_collate_fn(batch, self.tokenizer_tgt)
 
     def get_tokenizers(self):
         """
