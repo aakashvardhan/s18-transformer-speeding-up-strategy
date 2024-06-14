@@ -168,7 +168,7 @@ class MultiHeadAttentionBlock(LightningModule):
         d_k = query.size(-1)
         # (batch, h, seq_len, d_k) x (batch, h, d_k, seq_len) -> (batch, h, seq_len, seq_len)
         attention_scores = (query @ key.transpose(-2, -1)) / math.sqrt(d_k)
-        _MASKING_VALUE = -1e30 if attention_scores.dtype == torch.float32 else -1e4
+        _MASKING_VALUE = -1e9 if attention_scores.dtype == torch.float32 else -1e4
         if mask is not None:
             # Write a very low value (indicating -inf) to the positions where mask is 0
             attention_scores.masked_fill_(mask == 0, value=_MASKING_VALUE)
@@ -176,7 +176,7 @@ class MultiHeadAttentionBlock(LightningModule):
         attention_scores = attention_scores.softmax(
             dim=-1
         )  # (batch, h, seq_len, seq_len) # softmax over the last dimension
-        print(attention_scores)
+        # print(attention_scores)
 
         if dropout is not None:
             attention_scores = dropout(attention_scores)
