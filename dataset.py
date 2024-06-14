@@ -93,8 +93,8 @@ class BillingualDataset(Dataset):
         enc_input_tokens = self.tokenizer_src.encode(src_text).ids
         dec_input_tokens = self.tokenizer_tgt.encode(tgt_text).ids
 
-        enc_num_padding_tokens = 0
-        dec_num_padding_tokens = 0
+        enc_num_padding_tokens = self.seq_len - len(enc_input_tokens) - 2
+        dec_num_padding_tokens = self.seq_len - len(dec_input_tokens) - 1
 
         if enc_num_padding_tokens < 0 or dec_num_padding_tokens < 0:
             raise ValueError("Sentence too long")
@@ -133,24 +133,24 @@ class BillingualDataset(Dataset):
             dim=0,
         )
 
-        # assert encoder_input.size(0) == self.seq_len
-        # assert decoder_input.size(0) == self.seq_len
-        # assert label.size(0) == self.seq_len
+        assert encoder_input.size(0) == self.seq_len
+        assert decoder_input.size(0) == self.seq_len
+        assert label.size(0) == self.seq_len
 
         return {
             "encoder_input": encoder_input,
             "decoder_input": decoder_input,
-            # "encoder_mask": (encoder_input != self.pad_token)
-            # .unsqueeze(0)
-            # .unsqueeze(0)
-            # .int(),
-            # "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int()
-            # & causal_mask(decoder_input.size(0)),
+            "encoder_mask": (encoder_input != self.pad_token)
+            .unsqueeze(0)
+            .unsqueeze(0)
+            .int(),
+            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int()
+            & causal_mask(decoder_input.size(0)),
             "label": label,
             "src_text": src_text,
             "tgt_text": tgt_text,
-            # "encoder_str_length": len(enc_input_tokens),
-            # "decoder_str_length": len(dec_input_tokens),
+            "encoder_str_length": len(enc_input_tokens),
+            "decoder_str_length": len(dec_input_tokens),
         }
 
 
@@ -184,47 +184,30 @@ class LTDataModule(L.LightningDataModule):
 
         return tokenizer
 
+
     def setup(self, stage=None):
 
         if stage == "fit" or stage is None:
             ds_raw = load_dataset(
-                "opus_books",
-                f"{self.config['lang_src']}-{self.config['lang_tgt']}",
-                split="train",
+            "opus_books", f"{self.config['lang_src']}-{self.config['lang_tgt']}", split="train"
             )
 
             src_lang = self.config["lang_src"]
             tgt_lang = self.config["lang_tgt"]
             seq_len = self.config["seq_len"]
 
-            self.tokenizer_src = self.get_or_build_tokenizer(
-                self.config, ds_raw, src_lang
-            )
-            self.tokenizer_tgt = self.get_or_build_tokenizer(
-                self.config, ds_raw, tgt_lang
-            )
+            self.tokenizer_src = self.get_or_build_tokenizer(self.config, ds_raw, src_lang)
+            self.tokenizer_tgt = self.get_or_build_tokenizer(self.config, ds_raw, tgt_lang)
 
             train_ds_size = int(0.9 * len(ds_raw))
             val_ds_size = len(ds_raw) - train_ds_size
-            train_ds_raw, val_ds_raw = random_split(
-                ds_raw, [train_ds_size, val_ds_size]
-            )
+            train_ds_raw, val_ds_raw = random_split(ds_raw, [train_ds_size, val_ds_size])
 
             self.train_ds = BillingualDataset(
-                train_ds_raw,
-                self.tokenizer_src,
-                self.tokenizer_tgt,
-                src_lang,
-                tgt_lang,
-                seq_len,
+                train_ds_raw, self.tokenizer_src, self.tokenizer_tgt, src_lang, tgt_lang, seq_len
             )
             self.val_ds = BillingualDataset(
-                val_ds_raw,
-                self.tokenizer_src,
-                self.tokenizer_tgt,
-                src_lang,
-                tgt_lang,
-                seq_len,
+                val_ds_raw, self.tokenizer_src, self.tokenizer_tgt, src_lang, tgt_lang, seq_len
             )
 
             max_len_src = 0
@@ -247,7 +230,7 @@ class LTDataModule(L.LightningDataModule):
             self.train_ds,
             batch_size=self.config["batch_size"],
             shuffle=True,
-            collate_fn=self.collate_fn,
+            # collate_fn=self.collate_fn,
             num_workers=self.config["n_workers"],
             pin_memory=True,
         )
@@ -257,9 +240,9 @@ class LTDataModule(L.LightningDataModule):
             self.val_ds,
             batch_size=1,
             shuffle=False,
-            collate_fn=self.collate_fn,
+            # collate_fn=self.collate_fn,
             num_workers=self.config["n_workers"],
-            pin_memory=True,
+            pin_memory=True
         )
 
     def collate_fn(self, batch):
