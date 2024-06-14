@@ -64,6 +64,10 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
 
     if debug:
         trainer = L.Trainer(fast_dev_run=True)
+        # Initialize the model
+        model = LTModel(cfg, tokenizer_src=tokenizer_src, tokenizer_tgt=tokenizer_tgt)
+        trainer.fit(model=model, datamodule=datamodule)
+        print("Debugging Done...")
     else:
         # Initialize the trainer
         trainer = L.Trainer(
@@ -95,41 +99,41 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
             limit_val_batches=1000,
         )
 
-    # Initialize the model
-    model = LTModel(cfg, tokenizer_src=tokenizer_src, tokenizer_tgt=tokenizer_tgt)
+        # Initialize the model
+        model = LTModel(cfg, tokenizer_src=tokenizer_src, tokenizer_tgt=tokenizer_tgt)
 
-    # Learning rate finder
-    tuner = L.pytorch.tuner.Tuner(trainer)
-    lr_finder = tuner.lr_find(
-        model, datamodule=datamodule, num_training=trainer.max_epochs
-    )
-    print(lr_finder)
+        # Learning rate finder
+        tuner = L.pytorch.tuner.Tuner(trainer)
+        lr_finder = tuner.lr_find(
+            model, datamodule=datamodule, num_training=trainer.max_epochs
+        )
+        print(lr_finder)
 
-    if lr_finder:
-        fig = lr_finder.plot(suggest=True)
-        fig.show()
-        suggested_lr = lr_finder.suggestion()
-        print(f"Suggested learning rate: {suggested_lr}")
-    else:
-        print("Learning rate finding did not complete successfully.")
+        if lr_finder:
+            fig = lr_finder.plot(suggest=True)
+            fig.show()
+            suggested_lr = lr_finder.suggestion()
+            print(f"Suggested learning rate: {suggested_lr}")
+        else:
+            print("Learning rate finding did not complete successfully.")
 
-    # Set the best learning rate
-    model.one_cycle_best_lr = suggested_lr
+        # Set the best learning rate
+        model.one_cycle_best_lr = suggested_lr
 
-    # Train the model
-    if if_ckpt:
-        trainer.fit(model=model, datamodule=datamodule, ckpt_path=ckpt_file)
-    else:
-        trainer.fit(model=model, datamodule=datamodule)
+        # Train the model
+        if if_ckpt:
+            trainer.fit(model=model, datamodule=datamodule, ckpt_path=ckpt_file)
+        else:
+            trainer.fit(model=model, datamodule=datamodule)
 
-    # Validate the model
-    trainer.validate(model=model, datamodule=datamodule)
-    print("Model Evaluation Done...")
+        # Validate the model
+        trainer.validate(model=model, datamodule=datamodule)
+        print("Model Evaluation Done...")
 
-    # Save the model
-    torch.save(model.state_dict(), "saved_resnet18_model.pth")
-    print("Model saved...")
+        # Save the model
+        torch.save(model.state_dict(), "saved_resnet18_model.pth")
+        print("Model saved...")
 
 
-if __name__ == "__main__":
-    main(config)
+# if __name__ == "__main__":
+#     main(config)
