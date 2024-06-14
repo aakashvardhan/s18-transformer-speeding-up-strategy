@@ -140,12 +140,6 @@ class BillingualDataset(Dataset):
         return {
             "encoder_input": encoder_input,
             "decoder_input": decoder_input,
-            "encoder_mask": (encoder_input != self.pad_token)
-            .unsqueeze(0)
-            .unsqueeze(0)
-            .int(),
-            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int()
-            & causal_mask(decoder_input.size(0)),
             "label": label,
             "src_text": src_text,
             "tgt_text": tgt_text,
@@ -230,6 +224,7 @@ class LTDataModule(L.LightningDataModule):
             self.train_ds,
             batch_size=self.config["batch_size"],
             shuffle=True,
+            collate_fn=self.collate_fn,
             num_workers=self.config["n_workers"],
             pin_memory=True,
         )
@@ -239,6 +234,7 @@ class LTDataModule(L.LightningDataModule):
             self.val_ds,
             batch_size=1,
             shuffle=False,
+            collate_fn=self.collate_fn,
             num_workers=self.config["n_workers"],
             pin_memory=True,
         )
