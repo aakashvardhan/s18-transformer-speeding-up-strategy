@@ -230,7 +230,6 @@ class LTDataModule(L.LightningDataModule):
             self.train_ds,
             batch_size=self.config["batch_size"],
             shuffle=True,
-            collate_fn=self.collate_fn,
             num_workers=self.config["n_workers"],
             pin_memory=True,
         )
@@ -240,7 +239,6 @@ class LTDataModule(L.LightningDataModule):
             self.val_ds,
             batch_size=1,
             shuffle=False,
-            collate_fn=self.collate_fn,
             num_workers=self.config["n_workers"],
             pin_memory=True,
         )
