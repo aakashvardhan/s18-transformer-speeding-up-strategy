@@ -36,7 +36,8 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:12240"
 # Load configuration
 config = get_config()
 
-def main(cfg, ckpt_file=None, if_ckpt=False):
+
+def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
     """
     Main function for training and evaluating a model.
 
@@ -54,48 +55,54 @@ def main(cfg, ckpt_file=None, if_ckpt=False):
     datamodule = LTDataModule(cfg)
     datamodule.setup()
     print("DataModule initialized...")
+    tokenizer_src, tokenizer_tgt = datamodule.get_tokenizers()
 
     # Initialize TensorBoard logger
     tb_logger = TensorBoardLogger(
         save_dir=os.getcwd(), version=1, name="lightning_logs"
     )
 
-    # Initialize the trainer
-    trainer = L.Trainer(
-        precision=cfg["precision"],
-        max_epochs=cfg["num_epochs"],
-        logger=tb_logger,
-        accelerator=cfg["accelerator"],
-        devices="auto",
-        default_root_dir=cfg["model_folder"],
-        callbacks=[
-            ModelCheckpoint(
-                dirpath=cfg["model_folder"],
-                save_top_k=3,
-                monitor="train_loss",
-                mode="min",
-                filename="model-{epoch:02d}-{train_loss:.4f}",
-                save_last=True,
-            ),
-            LearningRateMonitor(logging_interval="step", log_momentum=True),
-            EarlyStopping(monitor="train_loss", mode="min", stopping_threshold=1.7),
-            TQDMProgressBar(refresh_rate=10),
-        ],
-        gradient_clip_val=0.5,
-        num_sanity_val_steps=5,
-        sync_batchnorm=True,
-        enable_progress_bar=True,
-        log_every_n_steps=5,
-        check_val_every_n_epoch=9,
-        limit_val_batches=1000,
-    )
+    if debug:
+        trainer = L.Trainer(fast_dev_run=True)
+    else:
+        # Initialize the trainer
+        trainer = L.Trainer(
+            precision=cfg["precision"],
+            max_epochs=cfg["num_epochs"],
+            logger=tb_logger,
+            accelerator=cfg["accelerator"],
+            devices="auto",
+            default_root_dir=cfg["model_folder"],
+            callbacks=[
+                ModelCheckpoint(
+                    dirpath=cfg["model_folder"],
+                    save_top_k=3,
+                    monitor="train_loss",
+                    mode="min",
+                    filename="model-{epoch:02d}-{train_loss:.4f}",
+                    save_last=True,
+                ),
+                LearningRateMonitor(logging_interval="step", log_momentum=True),
+                EarlyStopping(monitor="train_loss", mode="min", stopping_threshold=1.7),
+                TQDMProgressBar(refresh_rate=10),
+            ],
+            gradient_clip_val=0.5,
+            num_sanity_val_steps=5,
+            sync_batchnorm=True,
+            enable_progress_bar=True,
+            log_every_n_steps=5,
+            check_val_every_n_epoch=9,
+            limit_val_batches=1000,
+        )
 
     # Initialize the model
-    model = LTModel(cfg)
+    model = LTModel(cfg, tokenizer_src=tokenizer_src, tokenizer_tgt=tokenizer_tgt)
 
     # Learning rate finder
     tuner = L.pytorch.tuner.Tuner(trainer)
-    lr_finder = tuner.lr_find(model, datamodule=datamodule, num_training=trainer.max_epochs)
+    lr_finder = tuner.lr_find(
+        model, datamodule=datamodule, num_training=trainer.max_epochs
+    )
     print(lr_finder)
 
     if lr_finder:
@@ -122,6 +129,7 @@ def main(cfg, ckpt_file=None, if_ckpt=False):
     # Save the model
     torch.save(model.state_dict(), "saved_resnet18_model.pth")
     print("Model saved...")
+
 
 if __name__ == "__main__":
     main(config)

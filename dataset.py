@@ -196,8 +196,8 @@ class LTDataModule(L.LightningDataModule):
             tgt_lang = self.config["lang_tgt"]
             seq_len = self.config["seq_len"]
 
-            tokenizer_src = self.get_or_build_tokenizer(self.config, ds_raw, src_lang)
-            tokenizer_tgt = self.get_or_build_tokenizer(self.config, ds_raw, tgt_lang)
+            self.tokenizer_src = self.get_or_build_tokenizer(self.config, ds_raw, src_lang)
+            self.tokenizer_tgt = self.get_or_build_tokenizer(self.config, ds_raw, tgt_lang)
 
             train_ds_size = int(0.9 * len(ds_raw))
             val_ds_size = len(ds_raw) - train_ds_size
