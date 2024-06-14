@@ -108,6 +108,9 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
             model, datamodule=datamodule, num_training=trainer.max_epochs
         )
         print(lr_finder)
+        
+        # Initialize suggested_lr with a default value
+        suggested_lr = cfg["one_cycle_best_lr"]
 
         if lr_finder:
             fig = lr_finder.plot(suggest=True)
