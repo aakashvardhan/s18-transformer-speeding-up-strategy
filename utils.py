@@ -43,17 +43,32 @@ def dynamic_collate_fn(batch: list, tokenizer_tgt) -> dict:
 
         # Pad the encoder input
         enc_item = torch.cat(
-            [enc_item, torch.tensor((enc_len - len(enc_item),), pad_token_id, dtype=torch.int64)]
+            [
+                enc_item,
+                torch.tensor(
+                    pad_token_id * (enc_len - len(enc_item)), dtype=torch.int64
+                ),
+            ]
         )
 
         # Pad the decoder input
         dec_item = torch.cat(
-            [dec_item, torch.tensor((dec_len - len(dec_item),), pad_token_id, dtype=torch.int64)]
+            [
+                dec_item,
+                torch.tensor(
+                    pad_token_id * (dec_len - len(dec_item)), dtype=torch.int64
+                ),
+            ]
         )
 
         # Pad the label
         label_item = torch.cat(
-            [label_item, torch.tensor((dec_len - len(label_item),), pad_token_id, dtype=torch.int64)]
+            [
+                label_item,
+                torch.tensor(
+                    pad_token_id * (dec_len - len(label_item)), dtype=torch.int64
+                ),
+            ]
         )
 
         encoder_input.append(enc_item)
