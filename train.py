@@ -36,8 +36,7 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
     datamodule = LTDataModule(cfg)
     datamodule.setup()
     print("DataModule initialized...")
-    tokenizer_src, tokenizer_tgt = datamodule.get_tokenizers()
-
+    tokenizer_src, tokenizer_tgt = datamodule.tokenizer_src, datamodule.tokenizer_tgt
     # Initialize TensorBoard logger
     tb_logger = TensorBoardLogger(
         save_dir=os.getcwd(), version=1, name="lightning_logs"
