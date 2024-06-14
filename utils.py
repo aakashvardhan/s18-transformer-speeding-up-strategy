@@ -1,7 +1,7 @@
 import torch
 
 
-def dynamic_collate_fn(batch, tokenizer_tgt):
+def dynamic_collate_fn(batch: list, tokenizer_tgt) -> dict:
     """
     Dynamically pads the batch of data samples to the maximum sequence length.
 
@@ -23,11 +23,14 @@ def dynamic_collate_fn(batch, tokenizer_tgt):
               - "src_text": List of source texts.
               - "tgt_text": List of target texts.
     """
-    # Dynamic batch padding
-    # Find max seq_len in batch
-    # max_len = max(list(map(lambda x: x["max_len"], batch)))
-    enc_len = max([len(item["encoder_input"]) for item in batch])
-    dec_len = max([len(item["decoder_input"]) for item in batch])
+    if not batch:
+        raise ValueError("The input batch is empty.")
+
+    # Find the maximum sequence lengths in the batch
+    enc_len = max(len(item["encoder_input"]) for item in batch)
+    dec_len = max(len(item["decoder_input"]) for item in batch)
+
+    pad_token_id = tokenizer_tgt.token_to_id("[PAD]")
 
     encoder_input = []
     decoder_input = []
@@ -40,74 +43,37 @@ def dynamic_collate_fn(batch, tokenizer_tgt):
 
         # Pad the encoder input
         enc_item = torch.cat(
-            [
-                enc_item,
-                torch.tensor(
-                    [tokenizer_tgt.token_to_id("[PAD]")] * (enc_len - len(enc_item)),
-                    dtype=torch.int64,
-                ),
-            ],
-            dim=0,
+            [enc_item, torch.tensor((enc_len - len(enc_item),), pad_token_id, dtype=torch.int64)]
         )
 
         # Pad the decoder input
         dec_item = torch.cat(
-            [
-                dec_item,
-                torch.tensor(
-                    [tokenizer_tgt.token_to_id("[PAD]")] * (dec_len - len(dec_item)),
-                    dtype=torch.int64,
-                ),
-            ],
-            dim=0,
+            [dec_item, torch.tensor((dec_len - len(dec_item),), pad_token_id, dtype=torch.int64)]
         )
 
         # Pad the label
         label_item = torch.cat(
-            [
-                label_item,
-                torch.tensor(
-                    [tokenizer_tgt.token_to_id("[PAD]")] * (dec_len - len(label_item)),
-                    dtype=torch.int64,
-                ),
-            ],
-            dim=0,
+            [label_item, torch.tensor((dec_len - len(label_item),), pad_token_id, dtype=torch.int64)]
         )
 
         encoder_input.append(enc_item)
         decoder_input.append(dec_item)
         label.append(label_item)
 
+    # Stack the padded sequences into tensors
     encoder_input = torch.stack(encoder_input)
     decoder_input = torch.stack(decoder_input)
-    encoder_mask = (
-        (encoder_input != tokenizer_tgt.token_to_id("[PAD]"))
-        .unsqueeze(1)
-        .unsqueeze(1)
-        .int()
-    )
-    # Assume batch_size is the size of the batch, and dec_len is the length of the decoder sequences
-    # Assume batch_size is the size of the batch, and dec_len is the length of the decoder sequences
+    label = torch.stack(label)
+
+    # Create masks for the encoder and decoder inputs
+    encoder_mask = (encoder_input != pad_token_id).unsqueeze(1).unsqueeze(1).int()
+
     batch_size = decoder_input.size(0)
-
-    # Generate the causal mask with the correct size
     causal_mask_ = causal_mask(dec_len).unsqueeze(1).repeat(batch_size, 1, 1, 1)
-
-    # Debugging: Print the shapes of the tensors
-    # print("causal_mask new shape (after unsqueeze and repeat):", causal_mask.shape)
-    decoder_mask = (
-        (decoder_input != tokenizer_tgt.token_to_id("[PAD]"))
-        .unsqueeze(1)
-        .unsqueeze(2)
-        .int()
-    )
-    # print("decoder_mask shape (after unsqueeze):", decoder_mask.shape)
-    # print("causal_mask shape (after repeat):", causal_mask.shape)
-
-    # The bitwise AND operation
+    decoder_mask = (decoder_input != pad_token_id).unsqueeze(1).unsqueeze(2).int()
     decoder_mask = decoder_mask & causal_mask_.int()
 
-    label = torch.stack(label)
+    # Extract source and target texts
     src_texts = [item["src_text"] for item in batch]
     tgt_texts = [item["tgt_text"] for item in batch]
 

@@ -7,7 +7,6 @@ import torch.optim as optim
 from torchmetrics.text import BLEUScore, CharErrorRate, WordErrorRate
 
 from config_file import get_weights_file_path
-from dataset import get_ds
 from models.transformer import build_transformer
 from utils import causal_mask
 
