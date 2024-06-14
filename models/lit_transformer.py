@@ -20,7 +20,6 @@ class LTModel(L.LightningModule):
         one_cycle_best_lr (float): Best learning rate for one cycle learning rate scheduler.
     """
 
-    PAD_TOKEN = "[PAD]"
 
     def __init__(
         self,
@@ -48,17 +47,18 @@ class LTModel(L.LightningModule):
         self.bleu_metric = BLEUScore()
         self.save_hyperparameters()
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass of the LTModel.
+    def forward(self, batch):
+        encoder_input = batch['encoder_input'] # (batch_size, seq_len)
+        decoder_input = batch['decoder_input'] # (batch_size, seq_len)
 
-        Args:
-            x (torch.Tensor): Input tensor.
-
-        Returns:
-            torch.Tensor: Projected output of the model.
-        """
-        return self.model(x)
+        encoder_mask = batch['encoder_mask']
+        decoder_mask = batch['decoder_mask']
+        
+        # Run the tensors through the encoder, decoder and the projection layer
+        encoder_output = self.model.encode(encoder_input, encoder_mask) # (batch_size, seq_len, d_model)
+        decoder_output = self.model.decode(encoder_output, encoder_mask, decoder_input, decoder_mask) # (batch_size, seq_len, d_model)
+        proj_output = self.model.project(decoder_output) # (batch_size, seq_len, vocab_size)
+        return proj_output
 
     def greedy_decode(
         self, model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len
@@ -88,7 +88,7 @@ class LTModel(L.LightningModule):
             decoder_mask = causal_mask(decoder_input.size(1)).type_as(source_mask)
             out = model.decode(encoder_output, source_mask, decoder_input, decoder_mask)
             prob = model.project(out[:, -1])
-            _, next_word = torch.max(prob, dim=1)
+            _, next_word = torch.max(prob, dim=-1)
             decoder_input = torch.cat(
                 [
                     decoder_input,
@@ -133,13 +133,13 @@ class LTModel(L.LightningModule):
             torch.Tensor: Computed loss.
         """
         loss_fn = nn.CrossEntropyLoss(
-            ignore_index=self.tokenizer_tgt.token_to_id(self.PAD_TOKEN),
+            ignore_index=self.tokenizer_tgt.token_to_id("[PAD]"),
             label_smoothing=0.1,
         )
         return loss_fn(proj_output.view(-1, self.tgt_vocab_size), label.view(-1))
 
     def training_step(
-        self, batch: Dict[str, torch.Tensor], batch_idx: int
+        self, batch, batch_idx: int
     ) -> torch.Tensor:
         """
         Training step for the LTModel.
@@ -151,16 +151,8 @@ class LTModel(L.LightningModule):
         Returns:
             torch.Tensor: Loss value.
         """
-        encoder_input = batch["encoder_input"]
-        decoder_input = batch["decoder_input"]
-        encoder_mask = batch["encoder_mask"]
-        decoder_mask = batch["decoder_mask"]
         label = batch["label"]
-        encoder_output = self.model.encode(encoder_input, encoder_mask)
-        decoder_output = self.model.decode(
-            encoder_output, encoder_mask, decoder_input, decoder_mask
-        )
-        proj_output = self.model.project(decoder_output)
+        proj_output = self(batch)
         loss = self.loss_fn(proj_output, label)
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
@@ -246,7 +238,7 @@ class LTModel(L.LightningModule):
         self.expected.clear()
         self.predicted.clear()
 
-    def validation_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> None:
+    def validation_step(self, batch, batch_idx: int) -> None:
         """
         Validation step for the LTModel.
 
