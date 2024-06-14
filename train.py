@@ -1,33 +1,14 @@
 import os
-import warnings
-from pathlib import Path
-
-import torch
-import torchmetrics
 import lightning as L
-from lightning.pytorch.loggers import TensorBoardLogger
-from lightning.pytorch.callbacks import (
-    ModelCheckpoint,
-    LearningRateMonitor,
-    EarlyStopping,
-    TQDMProgressBar,
-)
-from datasets import load_dataset
-from tokenizers import Tokenizer
-from tokenizers.models import WordLevel
-from tokenizers.pre_tokenizers import Whitespace
-from tokenizers.trainers import WordLevelTrainer
-from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.data import DataLoader, Dataset, random_split
-from torch.utils.tensorboard import SummaryWriter
-from tqdm import tqdm
+import torch
 
-from config_file import get_config, get_weights_file_path
-from dataset import BillingualDataset, LTDataModule
-from utils import dynamic_collate_fn, causal_mask
-import torch.nn as nn
+from lightning.pytorch.callbacks import (EarlyStopping, LearningRateMonitor,
+                                         ModelCheckpoint, TQDMProgressBar)
+from lightning.pytorch.loggers import TensorBoardLogger
+
+from config_file import get_config
+from dataset import LTDataModule
 from models.lit_transformer import LTModel
-from models.transformer import build_transformer
 
 # Clear CUDA cache and set environment variable
 torch.cuda.empty_cache()
@@ -138,5 +119,5 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
         print("Model saved...")
 
 
-# if __name__ == "__main__":
-#     main(config)
+if __name__ == "__main__":
+    main(config,debug=True)

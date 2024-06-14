@@ -11,67 +11,6 @@ from models.transformer import build_transformer
 from utils import causal_mask
 
 
-def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len):
-    """
-    Greedy decoding for sequence generation.
-
-    Args:
-        model (nn.Module): The transformer model.
-        source (Tensor): Source input tensor.
-        source_mask (Tensor): Source mask tensor.
-        tokenizer_src (Tokenizer): Source tokenizer.
-        tokenizer_tgt (Tokenizer): Target tokenizer.
-        max_len (int): Maximum length of the generated sequence.
-
-    Returns:
-        Tensor: Decoded sequence.
-    """
-    sos_idx = tokenizer_tgt.token_to_id("[SOS]")
-    eos_idx = tokenizer_tgt.token_to_id("[EOS]")
-    encoder_output = model.encode(source, source_mask)
-    decoder_input = torch.empty(1, 1).fill_(sos_idx).type_as(source)
-
-    while True:
-        if decoder_input.size(1) == max_len:
-            break
-        decoder_mask = causal_mask(decoder_input.size(1)).type_as(source_mask)
-        out = model.decode(encoder_output, source_mask, decoder_input, decoder_mask)
-        prob = model.project(out[:, -1])
-        _, next_word = torch.max(prob, dim=1)
-        decoder_input = torch.cat(
-            [
-                decoder_input,
-                torch.empty(1, 1).type_as(source_mask).fill_(next_word.item()),
-            ],
-            dim=1,
-        )
-        if next_word == eos_idx:
-            break
-
-    return decoder_input.squeeze(0)
-
-
-def get_model(config, src_vocab_size, tgt_vocab_size):
-    """
-    Build the transformer model.
-
-    Args:
-        config (dict): Configuration parameters.
-        src_vocab_size (int): Source vocabulary size.
-        tgt_vocab_size (int): Target vocabulary size.
-
-    Returns:
-        nn.Module: Transformer model.
-    """
-    return build_transformer(
-        src_vocab_size,
-        tgt_vocab_size,
-        config["seq_len"],
-        config["seq_len"],
-        d_model=config["d_model"],
-    )
-
-
 class LTModel(L.LightningModule):
     """
     LightningModule for the LTModel.
@@ -96,7 +35,7 @@ class LTModel(L.LightningModule):
         self.tokenizer_tgt = tokenizer_tgt
         self.src_vocab_size = self.tokenizer_src.get_vocab_size()
         self.tgt_vocab_size = self.tokenizer_tgt.get_vocab_size()
-        self.model = get_model(config, self.src_vocab_size, self.tgt_vocab_size)
+        self.model = self.get_model(config, self.src_vocab_size, self.tgt_vocab_size)
         self.learning_rate = config.get("lr", 0.001)
         self.one_cycle_best_lr = one_cycle_best_lr
         self.initial_epoch = 0
@@ -120,6 +59,67 @@ class LTModel(L.LightningModule):
             torch.Tensor: Projected output of the model.
         """
         return self.model(x)
+
+    def greedy_decode(
+        self, model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len
+    ):
+        """
+        Greedy decoding for sequence generation.
+
+        Args:
+            model (nn.Module): The transformer model.
+            source (Tensor): Source input tensor.
+            source_mask (Tensor): Source mask tensor.
+            tokenizer_src (Tokenizer): Source tokenizer.
+            tokenizer_tgt (Tokenizer): Target tokenizer.
+            max_len (int): Maximum length of the generated sequence.
+
+        Returns:
+            Tensor: Decoded sequence.
+        """
+        sos_idx = tokenizer_tgt.token_to_id("[SOS]")
+        eos_idx = tokenizer_tgt.token_to_id("[EOS]")
+        encoder_output = model.encode(source, source_mask)
+        decoder_input = torch.empty(1, 1).fill_(sos_idx).type_as(source)
+
+        while True:
+            if decoder_input.size(1) == max_len:
+                break
+            decoder_mask = causal_mask(decoder_input.size(1)).type_as(source_mask)
+            out = model.decode(encoder_output, source_mask, decoder_input, decoder_mask)
+            prob = model.project(out[:, -1])
+            _, next_word = torch.max(prob, dim=1)
+            decoder_input = torch.cat(
+                [
+                    decoder_input,
+                    torch.empty(1, 1).type_as(source_mask).fill_(next_word.item()),
+                ],
+                dim=1,
+            )
+            if next_word == eos_idx:
+                break
+
+        return decoder_input.squeeze(0)
+
+    def get_model(self, config, src_vocab_size, tgt_vocab_size):
+        """
+        Build the transformer model.
+
+        Args:
+            config (dict): Configuration parameters.
+            src_vocab_size (int): Source vocabulary size.
+            tgt_vocab_size (int): Target vocabulary size.
+
+        Returns:
+            nn.Module: Transformer model.
+        """
+        return build_transformer(
+            src_vocab_size,
+            tgt_vocab_size,
+            config["seq_len"],
+            config["seq_len"],
+            d_model=config["d_model"],
+        )
 
     def loss_fn(self, proj_output: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
         """
@@ -214,7 +214,9 @@ class LTModel(L.LightningModule):
         Returns:
             Tuple: List containing the optimizer and learning rate scheduler.
         """
-        optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate, eps=1e-9)
+        optimizer = optim.AdamW(
+            self.model.parameters(), lr=self.learning_rate, eps=1e-9
+        )
         dataloader = self.trainer.datamodule.train_dataloader()
         scheduler = optim.lr_scheduler.OneCycleLR(
             optimizer,
@@ -236,6 +238,14 @@ class LTModel(L.LightningModule):
             }
         ]
 
+    def on_validation_epoch_start(self) -> None:
+        """
+        Actions to perform at the start of each validation epoch.
+        """
+        self.source_texts.clear()
+        self.expected.clear()
+        self.predicted.clear()
+
     def validation_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> None:
         """
         Validation step for the LTModel.
@@ -246,7 +256,7 @@ class LTModel(L.LightningModule):
         """
         encoder_input = batch["encoder_input"]
         encoder_mask = batch["encoder_mask"]
-        model_out = greedy_decode(
+        model_out = self.greedy_decode(
             self.model,
             encoder_input,
             encoder_mask,
@@ -254,9 +264,13 @@ class LTModel(L.LightningModule):
             self.tokenizer_tgt,
             self.config["seq_len"],
         )
+
+        source_text = batch["src_text"][0]
+        target_text = batch["tgt_text"][0]
+
         model_out_text = self.tokenizer_tgt.decode(model_out.detach().cpu().numpy())
-        self.source_texts.append(batch["src_text"][0])
-        self.expected.append(batch["tgt_text"][0])
+        self.source_texts.append(source_text)
+        self.expected.append(target_text)
         self.predicted.append(model_out_text)
 
         if batch_idx < self.config.get("num_examples", 5):
@@ -264,8 +278,8 @@ class LTModel(L.LightningModule):
             print(
                 f"{f'Validation on example {batch_idx} on epoch {self.current_epoch}':^80}"
             )
-            print(f"{f'SOURCE: ':>12}{batch['src_text'][0]}")
-            print(f"{f'TARGET: ':>12}{batch['tgt_text'][0]}")
+            print(f"{f'SOURCE: ':>12}{source_text}")
+            print(f"{f'TARGET: ':>12}{target_text}")
             print(f"{f'PREDICTED: ':>12}{model_out_text}")
 
     def on_validation_epoch_end(self) -> None:
@@ -281,7 +295,7 @@ class LTModel(L.LightningModule):
             prog_bar=True,
             logger=True,
         )
-        # Clear lists for the next epoch
-        self.source_texts.clear()
-        self.expected.clear()
-        self.predicted.clear()
+
+        # -- Debugging --
+        print("-" * 80)
+        print("Predicted text: ", self.predicted)
