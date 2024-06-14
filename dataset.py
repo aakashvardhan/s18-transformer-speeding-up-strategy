@@ -93,8 +93,8 @@ class BillingualDataset(Dataset):
         enc_input_tokens = self.tokenizer_src.encode(src_text).ids
         dec_input_tokens = self.tokenizer_tgt.encode(tgt_text).ids
 
-        enc_num_padding_tokens = self.seq_len - len(enc_input_tokens) - 2
-        dec_num_padding_tokens = self.seq_len - len(dec_input_tokens) - 1
+        enc_num_padding_tokens = 0
+        dec_num_padding_tokens = 0
 
         if enc_num_padding_tokens < 0 or dec_num_padding_tokens < 0:
             raise ValueError("Sentence too long")
@@ -140,17 +140,17 @@ class BillingualDataset(Dataset):
         return {
             "encoder_input": encoder_input,
             "decoder_input": decoder_input,
-            "encoder_mask": (encoder_input != self.pad_token)
-            .unsqueeze(0)
-            .unsqueeze(0)
-            .int(),
-            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int()
-            & causal_mask(decoder_input.size(0)),
+            # "encoder_mask": (encoder_input != self.pad_token)
+            # .unsqueeze(0)
+            # .unsqueeze(0)
+            # .int(),
+            # "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int()
+            # & causal_mask(decoder_input.size(0)),
             "label": label,
             "src_text": src_text,
             "tgt_text": tgt_text,
-            "encoder_str_length": len(enc_input_tokens),
-            "decoder_str_length": len(dec_input_tokens),
+            # "encoder_str_length": len(enc_input_tokens),
+            # "decoder_str_length": len(dec_input_tokens),
         }
 
 
