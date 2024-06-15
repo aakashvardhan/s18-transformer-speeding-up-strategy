@@ -133,12 +133,10 @@ class LTModel(L.LightningModule):
             cer_metric = CharErrorRate()
             cer = cer_metric(self.predicted, self.expected)
             self.writer.add_scalar("validation cer", cer, self.trainer.global_step)
-            self.writer.flush()
 
             wer_metric = WordErrorRate()
             wer = wer_metric(self.predicted, self.expected)
             self.writer.add_scalar("validation wer", wer, self.trainer.global_step)
-            self.writer.flush()
 
             bleu_metric = BLEUScore()
             bleu = bleu_metric(self.predicted, self.expected)
@@ -148,6 +146,10 @@ class LTModel(L.LightningModule):
 
     def on_save_checkpoint(self, checkpoint):
         model_filename = get_weights_file_path(self.cfg, f"{self.current_epoch}")
+        model_folder = os.path.dirname(model_filename)
+        if not os.path.exists(model_folder):
+            os.makedirs(model_folder)
+        print(f"Saving model to {model_filename}")
         print(f"Saving model to {model_filename}")
         torch.save(
             {
