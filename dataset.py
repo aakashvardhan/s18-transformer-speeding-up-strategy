@@ -146,6 +146,18 @@ class LiTDataModule(LightningDataModule):
         self.val_ds = BillingualDataset(
             val_ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len
         )
+        
+        max_len_src = 0
+        max_len_tgt = 0
+
+        for item in ds_raw:
+            src_ids = self.tokenizer_src.encode(item["translation"][src_lang]).ids
+            tgt_ids = self.tokenizer_tgt.encode(item["translation"][tgt_lang]).ids
+            max_len_src = max(max_len_src, len(src_ids))
+            max_len_tgt = max(max_len_tgt, len(tgt_ids))
+
+        print(f"Max length of the source sentence : {max_len_src}")
+        print(f"Max length of the source target : {max_len_tgt}")
 
     def collate_fn(self, batch):
 
