@@ -144,6 +144,9 @@ class LiTDataModule(LightningDataModule):
         self.val_ds = BillingualDataset(
             val_ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len
         )
+        
+    def collate_fn(self, batch):
+        pass
 
     def train_dataloader(self):
         return DataLoader(

@@ -195,6 +195,17 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
         ckpt_file (str): Path to the checkpoint file.
         if_ckpt (bool, optional): Whether to load the model from a checkpoint. Defaults to False.
     """
+    # Define the directory name
+    directory_name = 'weights'
+
+    # Create the directory if it does not exist
+    if not os.path.exists(directory_name):
+        os.makedirs(directory_name)
+        print(f"Directory '{directory_name}' created!")
+    else:
+        print(f"Directory '{directory_name}' already exists.")
+    
+    
     # Clear CUDA cache and set seed
     torch.cuda.empty_cache()
     L.seed_everything(42, workers=True)

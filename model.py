@@ -317,7 +317,7 @@ def build_transformer(
 
     # Create the encoder blocks
     encoder_blocks = []
-    for _ in range(N):
+    for _ in range(N // 2):
         encoder_self_attention_block = MultiHeadAttentionBlock(d_model, h, dropout)
         feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout)
         encoder_block = EncoderBlock(
@@ -327,7 +327,7 @@ def build_transformer(
 
     # Create the decoder blocks
     decoder_blocks = []
-    for _ in range(N):
+    for _ in range(N // 2):
         decoder_self_attention_block = MultiHeadAttentionBlock(d_model, h, dropout)
         decoder_cross_attention_block = MultiHeadAttentionBlock(d_model, h, dropout)
         feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout)
@@ -338,10 +338,16 @@ def build_transformer(
             dropout,
         )
         decoder_blocks.append(decoder_block)
+        
+    e1, e2, e3 = encoder_blocks
+    d1, d2, d3 = decoder_blocks
+    
+    t_encoder_blocks = [e1, e2, e3, e1, e2, e3]
+    t_decoder_blocks = [d1, d2, d3, d1, d2, d3]
 
     # Create the encoder and decoder
-    encoder = Encoder(nn.ModuleList(encoder_blocks))
-    decoder = Decoder(nn.ModuleList(decoder_blocks))
+    encoder = Encoder(nn.ModuleList(t_encoder_blocks))
+    decoder = Decoder(nn.ModuleList(t_decoder_blocks))
 
     # Create the projection layer
     projection_layer = ProjectionLayer(d_model, tgt_vocab_size)
