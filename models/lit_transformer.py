@@ -89,6 +89,11 @@ class LTModel(L.LightningModule):
             out = model.decode(encoder_output, source_mask, decoder_input, decoder_mask)
             prob = model.project(out[:, -1])
             _, next_word = torch.max(prob, dim=-1)
+            
+            # Debugging: Print intermediate outputs
+            print(f"Decoder input: {decoder_input}")
+            print(f"Next word: {next_word.item()}")
+            
             decoder_input = torch.cat(
                 [
                     decoder_input,
