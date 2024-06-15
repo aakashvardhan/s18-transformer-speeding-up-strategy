@@ -90,7 +90,7 @@ class LTModel(L.LightningModule):
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
 
         # assert loss is not nan
-        # assert not torch.isnan(loss).any(), "Loss is NaN"
+        assert not torch.isnan(loss).any(), "Loss is NaN"
 
         self.train_losses.append(loss.item())
         self.writer.add_scalar("train_loss", loss.item(), self.trainer.global_step)
