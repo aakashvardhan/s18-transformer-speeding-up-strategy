@@ -166,39 +166,32 @@ class LiTDataModule(LightningDataModule):
 
     def collate_fn(self, batch):
 
-        encoder_input_max = max(x["encoder_str_length"] for x in batch)
-        decoder_input_max = max(x["decoder_str_length"] for x in batch)
+        max_enc_input = max(item["encoder_str_length"] for item in batch)
+        max_dec_input = max(item["decoder_str_length"] for item in batch)
 
-        encoder_inputs = []
-        decoder_inputs = []
-        encoder_mask = []
-        decoder_mask = []
-        label = []
-        src_text = []
-        tgt_text = []
-
-        for b in batch:
-            encoder_inputs.append(b["encoder_input"][:encoder_input_max])
-            decoder_inputs.append(b["decoder_input"][:decoder_input_max])
-            encoder_mask.append(
-                (b["encoder_mask"][0, 0, :encoder_input_max])
-                .unsqueeze(0)
-                .unsqueeze(0)
-                .unsqueeze(0)
-                .int()
-            )
-            decoder_mask.append(
-                (b["decoder_mask"][0, :decoder_input_max, :decoder_input_max])
-                .unsqueeze(0)
-                .unsqueeze(0)
-            )
-            label.append(b["label"][:decoder_input_max])
-            src_text.append(b["src_text"])
-            tgt_text.append(b["tgt_text"])
+        encoder_input = [item["encoder_input"][:max_enc_input] for item in batch]
+        decoder_input = [item["decoder_input"][:max_dec_input] for item in batch]
+        encoder_mask = [
+            item["encoder_mask"][0, 0, :max_enc_input]
+            .unsqueeze(0)
+            .unsqueeze(0)
+            .unsqueeze(0)
+            .int()
+            for item in batch
+        ]
+        decoder_mask = [
+            item["decoder_mask"][0, :max_dec_input, :max_dec_input]
+            .unsqueeze(0)
+            .unsqueeze(0)
+            for item in batch
+        ]
+        label = [item["label"][:max_dec_input] for item in batch]
+        src_text = [item["src_text"] for item in batch]
+        tgt_text = [item["tgt_text"] for item in batch]
 
         return {
-            "encoder_input": torch.vstack(encoder_inputs),
-            "decoder_input": torch.vstack(decoder_inputs),
+            "encoder_input": torch.vstack(encoder_input),
+            "decoder_input": torch.vstack(decoder_input),
             "encoder_mask": torch.vstack(encoder_mask),
             "decoder_mask": torch.vstack(decoder_mask),
             "label": torch.vstack(label),

@@ -243,22 +243,20 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
                 ModelCheckpoint(
                     dirpath=cfg["model_folder"],
                     save_top_k=3,
-                    monitor="train_loss",
+                    monitor="train_loss_step",
                     mode="min",
                     filename="model-{epoch:02d}-{train_loss:.4f}",
                     save_last=True,
                 ),
                 LearningRateMonitor(logging_interval="step", log_momentum=True),
-                EarlyStopping(monitor="train_loss", mode="min", stopping_threshold=1.7),
+                EarlyStopping(monitor="train_loss_step", mode="min", stopping_threshold=1.6),
                 TQDMProgressBar(refresh_rate=10),
             ],
             gradient_clip_val=0.5,
             num_sanity_val_steps=5,
-            sync_batchnorm=True,
             enable_progress_bar=True,
-            log_every_n_steps=5,
-            check_val_every_n_epoch=9,
-            limit_val_batches=1000,
+            check_val_every_n_epoch=5,
+            limit_val_batches=0.05,
         )
 
         # Initialize the model
