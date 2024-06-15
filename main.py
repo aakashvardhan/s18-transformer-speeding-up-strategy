@@ -134,12 +134,12 @@ class LTModel(L.LightningModule):
             cer = cer_metric(self.predicted, self.expected)
             self.writer.add_scalar("validation cer", cer, self.trainer.global_step)
             self.writer.flush()
-            
+
             wer_metric = WordErrorRate()
             wer = wer_metric(self.predicted, self.expected)
             self.writer.add_scalar("validation wer", wer, self.trainer.global_step)
             self.writer.flush()
-            
+
             bleu_metric = BLEUScore()
             bleu = bleu_metric(self.predicted, self.expected)
             self.writer.add_scalar("validation BLEU", bleu, self.trainer.global_step)
@@ -196,7 +196,7 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
         if_ckpt (bool, optional): Whether to load the model from a checkpoint. Defaults to False.
     """
     # Define the directory name
-    directory_name = 'weights'
+    directory_name = "weights"
 
     # Create the directory if it does not exist
     if not os.path.exists(directory_name):
@@ -204,8 +204,7 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
         print(f"Directory '{directory_name}' created!")
     else:
         print(f"Directory '{directory_name}' already exists.")
-    
-    
+
     # Clear CUDA cache and set seed
     torch.cuda.empty_cache()
     L.seed_everything(42, workers=True)

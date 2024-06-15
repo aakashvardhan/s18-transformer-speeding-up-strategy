@@ -102,6 +102,8 @@ class BillingualDataset(Dataset):
             "label": label,
             "src_text": src_text,
             "tgt_text": tgt_text,
+            "encoder_str_length": len(enc_input_tokens),
+            "decoder_str_length": len(dec_input_tokens),
         }
 
 
@@ -144,17 +146,61 @@ class LiTDataModule(LightningDataModule):
         self.val_ds = BillingualDataset(
             val_ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len
         )
-        
+
     def collate_fn(self, batch):
-        pass
+
+        max_enc_input = max(item["encoder_str_length"] for item in batch)
+        max_dec_input = max(item["decoder_str_length"] for item in batch)
+
+        encoder_input = [item["encoder_input"][:max_enc_input] for item in batch]
+        decoder_input = [item["decoder_input"][:max_dec_input] for item in batch]
+        encoder_mask = [
+            item["encoder_mask"][0, 0, :max_enc_input]
+            .unsqueeze(0)
+            .unsqueeze(0)
+            .unsqueeze(0)
+            .int()
+            for item in batch
+        ]
+        decoder_mask = [
+            item["decoder_mask"][0, :max_dec_input, :max_dec_input]
+            .unsqueeze(0)
+            .unsqueeze(0)
+            for item in batch
+        ]
+        label = [item["label"][:max_dec_input] for item in batch]
+        src_text = [item["src_text"] for item in batch]
+        tgt_text = [item["tgt_text"] for item in batch]
+
+        return {
+            "encoder_input": torch.vstack(encoder_input),
+            "decoder_input": torch.vstack(decoder_input),
+            "encoder_mask": torch.vstack(encoder_mask),
+            "decoder_mask": torch.vstack(decoder_mask),
+            "label": torch.vstack(label),
+            "src_text": src_text,
+            "tgt_text": tgt_text,
+        }
 
     def train_dataloader(self):
         return DataLoader(
-            self.train_ds, batch_size=self.config["batch_size"], shuffle=True
+            self.train_ds,
+            batch_size=self.config["batch_size"],
+            shuffle=True,
+            num_workers=self.config["n_workers"],
+            collate_fn=self.collate_fn,
+            pin_memory=True,
         )
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1, shuffle=False)
+        return DataLoader(
+            self.val_ds,
+            batch_size=1,
+            shuffle=False,
+            num_workers=self.config["n_workers"],
+            collate_fn=self.collate_fn,
+            pin_memory=True,
+        )
 
     def get_or_build_tokenizer(self, ds, lang):
         tokenizer_path = Path(self.config["tokenizer_file"].format(lang))
