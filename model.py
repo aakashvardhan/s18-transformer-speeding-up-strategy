@@ -122,7 +122,7 @@ class MultiHeadAttentionBlock(nn.Module):
         # _MASKING_VALUE = -1e30 if attention_scores.dtype == torch.float32 else -1e4
         if mask is not None:
             # Write a very low value (indicating -inf) to the positions where mask == 0
-            attention_scores.masked_fill_(mask == 0, -1e9)
+            attention_scores.masked_fill_(mask == 0, -1e4)
             # attention_scores.masked_fill_(mask == 0, value=_MASKING_VALUE)
         attention_scores = attention_scores.softmax(
             dim=-1
@@ -342,8 +342,8 @@ def build_transformer(
     e1, e2, e3 = encoder_blocks
     d1, d2, d3 = decoder_blocks
     
-    t_encoder_blocks = [e1, e2, e3, e1, e2, e3]
-    t_decoder_blocks = [d1, d2, d3, d1, d2, d3]
+    t_encoder_blocks = [e1, e2, e3, e3, e2, e1]
+    t_decoder_blocks = [d1, d2, d3, d3, d2, d1]
 
     # Create the encoder and decoder
     encoder = Encoder(nn.ModuleList(t_encoder_blocks))
