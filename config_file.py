@@ -1,17 +1,19 @@
 from pathlib import Path
+import torch
 
 def get_config():
     return {
         "batch_size": 16,
         "precision": "16-mixed",
         "accelerator": "cuda",
+        "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         "progress_bar_refresh_rate": 10,
         "num_epochs": 18,
         "num_iter": 100,
         "lr": 3e-4,
         "seq_len": 350,
         "n_workers": 4,
-        "num_examples": 3,
+        "num_examples": 5,
         "one_cycle_best_lr":0.01,
         "d_model": 512,
         "lang_src": "en",

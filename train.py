@@ -1,123 +1,168 @@
-import os
-import lightning as L
 import torch
 
-from lightning.pytorch.callbacks import (EarlyStopping, LearningRateMonitor,
-                                         ModelCheckpoint, TQDMProgressBar)
-from lightning.pytorch.loggers import TensorBoardLogger
+from config_file import get_config, get_weights_file_path
 
-from config_file import get_config
-from dataset import LTDataModule
-from models.lit_transformer import LTModel
+torch.cuda.amp.autocast(enabled = True)
 
-# Clear CUDA cache and set environment variable
+import os
+import warnings
+from pathlib import Path
+
+import torch.nn as nn
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
+
+
 torch.cuda.empty_cache()
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:12240"
-
-# Load configuration
 config = get_config()
 
 
-def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
-    """
-    Main function for training and evaluating a model.
 
-    Args:
-        cfg (dict): Configuration parameters for the model training.
-        ckpt_file (str): Path to the checkpoint file.
-        if_ckpt (bool, optional): Whether to load the model from a checkpoint. Defaults to False.
-    """
-    # Clear CUDA cache and set seed
-    torch.cuda.empty_cache()
-    L.seed_everything(42, workers=True)
-    print("Seed set to 42...")
 
-    # Initialize the data module
-    datamodule = LTDataModule(cfg)
-    datamodule.setup()
-    print("DataModule initialized...")
-    tokenizer_src, tokenizer_tgt = datamodule.tokenizer_src, datamodule.tokenizer_tgt
-    print("target tokenizer: ", tokenizer_tgt)
-    # Initialize TensorBoard logger
-    tb_logger = TensorBoardLogger(
-        save_dir=os.getcwd(), version=1, name="lightning_logs"
-    )
 
-    if debug:
-        trainer = L.Trainer(fast_dev_run=True, accelerator='cuda',devices='auto')
-        # Initialize the model
-        model = LTModel(cfg, tokenizer_src=tokenizer_src, tokenizer_tgt=tokenizer_tgt)
-        trainer.fit(model=model, datamodule=datamodule)
-        print("Debugging Done...")
-    else:
-        # Initialize the trainer
-        trainer = L.Trainer(
-            precision=cfg["precision"],
-            max_epochs=cfg["num_epochs"],
-            logger=tb_logger,
-            accelerator=cfg["accelerator"],
-            devices="auto",
-            default_root_dir=cfg["model_folder"],
-            callbacks=[
-                ModelCheckpoint(
-                    dirpath=cfg["model_folder"],
-                    save_top_k=3,
-                    monitor="train_loss",
-                    mode="min",
-                    filename="model-{epoch:02d}-{train_loss:.4f}",
-                    save_last=True,
-                ),
-                LearningRateMonitor(logging_interval="step", log_momentum=True),
-                EarlyStopping(monitor="train_loss", mode="min", stopping_threshold=1.7),
-                TQDMProgressBar(refresh_rate=10),
-            ],
-            gradient_clip_val=0.5,
-            num_sanity_val_steps=5,
-            sync_batchnorm=True,
-            enable_progress_bar=True,
-            log_every_n_steps=5,
-            check_val_every_n_epoch=9,
-            limit_val_batches=1000,
-        )
 
-        # Initialize the model
-        model = LTModel(cfg, tokenizer_src=tokenizer_src, tokenizer_tgt=tokenizer_tgt)
 
-        # Learning rate finder
-        tuner = L.pytorch.tuner.Tuner(trainer)
-        lr_finder = tuner.lr_find(
-            model, datamodule=datamodule, num_training=trainer.max_epochs
-        )
-        print(lr_finder)
+
+def run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, max_len, device, writer, global_step):
+    model.eval()
+    count = 0
+    source_texts = []
+    expected = []
+    predicted = []
+    
+    try:
+        with os.popen('stty size', 'r') as console:
+            _, console_width = console.read().split()
+            console_width = int(console_width)
+    except:
+        console_width = 80
         
-        # Initialize suggested_lr with a default value
-        suggested_lr = cfg["one_cycle_best_lr"]
+    with torch.no_grad():
+        for batch in val_dataloader:
+            count += 1
+            encoder_input = batch["encoder_input"].to(device)
+            encoder_mask = batch["encoder_mask"].to(device)
+            
+            assert encoder_input.size(0)==1, "Batch size must be 1 for validation"
+            model_out = greedy_decode(model, encoder_input, encoder_mask, tokenizer_src, tokenizer_tgt, max_len, device)
+            
+            source_text = batch["src_text"][0]
+            target_text = batch["tgt_text"][0]
+            model_out_text = tokenizer_tgt.decode(model_out.detach().cpu().numpy())
+            
+            source_texts.append(source_text)
+            expected.append(target_text)
+            predicted.append(model_out_text)
+    """        
+            print("SOURCE", source_text)
+            print("TARGET", target_text)
+            print("PREDICTED", model_out_text)
+            
+    if writer:
+        metric = torchmetrics.CharErrorRate()
+        cer = metric(predicted, expected)
+        writer.add_scalar('validation cer', cer, global_step)
+        writer.flush()
+        
+        metric = torchmetrics.WordErrorRate()
+        wer = metric(predicted, expected)
+        writer.add_scalar('validation wer', wer, global_step)
+        writer.flush()
+        
+        metric = torchmetrics.BLEUScore()
+        bleu = metric(predicted, expected)
+        writer.add_scalar('validation BLEU', bleu, global_step)
+        writer.flush()
+        
+     """   
 
-        if lr_finder:
-            fig = lr_finder.plot(suggest=True)
-            fig.show()
-            suggested_lr = lr_finder.suggestion()
-            print(f"Suggested learning rate: {suggested_lr}")
-        else:
-            print("Learning rate finding did not complete successfully.")
-
-        # Set the best learning rate
-        model.one_cycle_best_lr = suggested_lr
-
-        # Train the model
-        if if_ckpt:
-            trainer.fit(model=model, datamodule=datamodule, ckpt_path=ckpt_file)
-        else:
-            trainer.fit(model=model, datamodule=datamodule)
-
-        # Validate the model
-        trainer.validate(model=model, datamodule=datamodule)
-        print("Model Evaluation Done...")
-
-        # Save the model
-        torch.save(model.state_dict(), "saved_resnet18_model.pth")
-        print("Model saved...")
 
 
+
+def train_model(config):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device : {device}")
+    
+    Path(config["model_folder"]).mkdir(parents=True, exist_ok=True)
+    train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
+    model = get_model(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
+    
+    #Tensorboard
+    writer = SummaryWriter(config["experiment_name"])
+    
+    #Adam is used to train each feature with a different learning rate. 
+    #If some feature is appearing less, adam takes care of it
+    optimizer = torch.optim.Adam(model.parameters(), lr = config["lr"], eps = 1e-9)
+    
+    initial_epoch = 0
+    global_step = 0
+    
+    if config["preload"]:
+        model_filename = get_weights_file_path(config, config["preload"])
+        print("Preloading model {model_filename}")
+        state = torch.load(model_filename)
+        model.load_state_dict(state["model_state_dict"])
+        initial_epoch = state["epoch"] + 1
+        optimizer.load_state_dict(state["optimizer_state_dict"])
+        global_step = state["global_step"]
+        print("preloaded")
+        
+    loss_fn = nn.CrossEntropyLoss(ignore_index = tokenizer_src.token_to_id("[PAD]"), label_smoothing=0.1)
+    
+    for epoch in range(initial_epoch, config["num_epochs"]):
+        torch.cuda.empty_cache()
+        print(epoch)
+        model.train()
+        batch_iterator = tqdm(train_dataloader, desc = f"Processing Epoch {epoch:02d}")
+        
+        for batch in batch_iterator:
+            encoder_input = batch["encoder_input"].to(device)
+            decoder_input = batch["decoder_input"].to(device)
+            encoder_mask = batch["encoder_mask"].to(device)
+            decoder_mask = batch["decoder_mask"].to(device)
+            
+            encoder_output = model.encode(encoder_input, encoder_mask)
+            decoder_output = model.decode(encoder_output, encoder_mask, decoder_input, decoder_mask)
+            proj_output = model.project(decoder_output)
+            
+            label = batch["label"].to(device)
+            
+            #Compute loss using cross entropy
+            tgt_vocab_size = tokenizer_tgt.get_vocab_size()
+            loss = loss_fn(proj_output.view(-1, tgt_vocab_size), label.view(-1))
+            batch_iterator.set_postfix({"loss": f"{loss.item():6.3f}"})
+
+            #Log the loss
+            writer.add_scalar('train_loss', loss.item(), global_step)
+            writer.flush()
+            
+            #Backpropogate loss
+            loss.backward()
+            
+            #Update weights
+            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
+            global_step+=1
+            
+        #run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, writer, global_step)
+        
+        
+        model_filename = get_weights_file_path(config, f"{epoch:02d}")
+        torch.save(
+            {
+                "epoch": epoch,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "global_step": global_step
+            },
+            model_filename
+        )
+        
+            
 if __name__ == "__main__":
-    main(config,debug=True)
+    warnings.filterwarnings("ignore")
+    config = get_config()
+    train_model(config)
+    
+    
