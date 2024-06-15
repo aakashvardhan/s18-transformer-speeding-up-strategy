@@ -212,7 +212,7 @@ class LiTDataModule(LightningDataModule):
             batch_size=self.config["batch_size"],
             shuffle=True,
             num_workers=self.config["n_workers"],
-            collate_fn=self.collate_fn,
+            # collate_fn=self.collate_fn,
             pin_memory=True,
         )
 
@@ -222,7 +222,7 @@ class LiTDataModule(LightningDataModule):
             batch_size=1,
             shuffle=False,
             num_workers=self.config["n_workers"],
-            collate_fn=self.collate_fn,
+            # collate_fn=self.collate_fn,
             pin_memory=True,
         )
 
