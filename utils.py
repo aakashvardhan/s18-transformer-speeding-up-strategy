@@ -50,3 +50,17 @@ def greedy_decode(
             break
 
     return decoder_input.squeeze(0)
+
+
+def clean_long_text(config,text):
+    src_config = config["lang_src"]
+    tgt_config = config["lang_tgt"]
+    text = sorted(
+        text, key=lambda x: len(x["translation"][src_config])
+    )
+    text = [item for item in text if len(item["translation"][src_config]) <= 160
+            and len(item["translation"][tgt_config]) <= 160]
+
+    text = [item for item in text if len(item["translation"][src_config]) + 10
+            >= len(item["translation"][tgt_config])]
+    return text

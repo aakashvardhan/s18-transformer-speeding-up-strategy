@@ -6,7 +6,9 @@ from tokenizers import Tokenizer
 from tokenizers.models import WordLevel
 from tokenizers.pre_tokenizers import Whitespace
 from tokenizers.trainers import WordLevelTrainer
+from torch.nn.utils.rnn import pad_sequence
 from pathlib import Path
+from utils import clean_long_text
 
 
 class BillingualDataset(Dataset):
@@ -135,6 +137,8 @@ class LiTDataModule(LightningDataModule):
 
         self.tokenizer_src = tokenizer_src
         self.tokenizer_tgt = tokenizer_tgt
+        
+        ds_raw = clean_long_text(self.config, ds_raw)
 
         train_ds_size = int(0.9 * len(ds_raw))
         val_ds_size = len(ds_raw) - train_ds_size
@@ -161,6 +165,7 @@ class LiTDataModule(LightningDataModule):
 
     def collate_fn(self, batch):
 
+
         max_enc_input = max(item["encoder_str_length"] for item in batch)
         max_dec_input = max(item["decoder_str_length"] for item in batch)
 
@@ -184,12 +189,21 @@ class LiTDataModule(LightningDataModule):
         src_text = [item["src_text"] for item in batch]
         tgt_text = [item["tgt_text"] for item in batch]
 
+        # Pad sequences
+        encoder_input = pad_sequence(encoder_input, batch_first=True, padding_value=0)
+        decoder_input = pad_sequence(decoder_input, batch_first=True, padding_value=0)
+        label = pad_sequence(label, batch_first=True, padding_value=-100)  # Assuming -100 is the ignore index for loss calculation
+
+        # Stack masks
+        encoder_mask = torch.stack(encoder_mask)
+        decoder_mask = torch.stack(decoder_mask)
+
         return {
-            "encoder_input": torch.vstack(encoder_input),
-            "decoder_input": torch.vstack(decoder_input),
-            "encoder_mask": torch.vstack(encoder_mask),
-            "decoder_mask": torch.vstack(decoder_mask),
-            "label": torch.vstack(label),
+            "encoder_input": encoder_input,
+            "decoder_input": decoder_input,
+            "encoder_mask": encoder_mask,
+            "decoder_mask": decoder_mask,
+            "label": label,
             "src_text": src_text,
             "tgt_text": tgt_text,
         }
