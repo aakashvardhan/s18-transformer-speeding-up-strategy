@@ -11,7 +11,7 @@ def get_config():
         "num_epochs": 18,
         "num_iter": 100,
         "lr": 2e-3,
-        "seq_len": 160,
+        "seq_len": 256,
         "n_workers": 4,
         "num_examples": 5,
         "one_cycle_best_lr":0.01,
