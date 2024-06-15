@@ -8,7 +8,6 @@ from tokenizers.pre_tokenizers import Whitespace
 from tokenizers.trainers import WordLevelTrainer
 from torch.nn.utils.rnn import pad_sequence
 from pathlib import Path
-from utils import clean_long_text
 
 
 class BillingualDataset(Dataset):
@@ -122,6 +121,8 @@ class LiTDataModule(LightningDataModule):
         self.config = config
 
     def prepare_data(self):
+        from utils import clean_long_text
+        
         ds_raw = load_dataset(
             "opus_books",
             f"{self.config['lang_src']}-{self.config['lang_tgt']}",

@@ -1,7 +1,6 @@
 # This file contains the utility functions for the project
 import torch
 from model import build_transformer
-from dataset import causal_mask
 
 
 def get_model(config, src_vocab_size, tgt_vocab_size):
@@ -18,6 +17,7 @@ def get_model(config, src_vocab_size, tgt_vocab_size):
 def greedy_decode(
     model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len, device
 ):
+    from dataset import causal_mask
 
     sos_idx = tokenizer_tgt.token_to_id("[SOS]")
     eos_idx = tokenizer_tgt.token_to_id("[EOS]")
