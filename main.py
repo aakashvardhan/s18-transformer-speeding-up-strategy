@@ -255,8 +255,8 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
             gradient_clip_val=0.5,
             num_sanity_val_steps=5,
             enable_progress_bar=True,
-            check_val_every_n_epoch=5,
-            limit_val_batches=0.05,
+            check_val_every_n_epoch=1,
+            limit_val_batches=2,
         )
 
         # Initialize the model
