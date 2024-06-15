@@ -1,7 +1,0 @@
-*.pyc
-*.pth
-
-results/
-*.zip
-
-*.json

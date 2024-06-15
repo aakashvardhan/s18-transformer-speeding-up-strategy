@@ -1,5 +1,0 @@
-datasets
-tokenizers
-lightning
-torchmetrics
-requests==2.31.0
