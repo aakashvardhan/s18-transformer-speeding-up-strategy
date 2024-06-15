@@ -38,7 +38,6 @@ class LTModel(L.LightningModule):
         self.tokenizer_tgt = tokenizer_tgt
         self.num_examples = cfg["num_examples"]
         self.initial_epoch = 0
-        self.global_step = 0
 
         self.one_cycle_best_lr = cfg["one_cycle_best_lr"]
         self.learning_rate = config["lr"]
@@ -49,12 +48,15 @@ class LTModel(L.LightningModule):
         self.loss_fn = nn.CrossEntropyLoss(
             ignore_index=tokenizer_src.token_to_id("[PAD]"), label_smoothing=0.1
         )
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=config["lr"], eps=1e-9)
+        self.optimizer = optim.AdamW(
+            self.model.parameters(), lr=self.learning_rate, eps=1e-9
+        )
         self.writer = SummaryWriter(config["experiment_name"])
 
         self.source_texts = []
         self.expected = []
         self.predicted = []
+        self.train_losses = []
 
         self.save_hyperparameters()
 
@@ -65,7 +67,7 @@ class LTModel(L.LightningModule):
         )
         return self.model.project(decoder_output)
 
-    def on_train_epoch_start(self):
+    def on_train_start(self):
         if config["preload"]:
             model_filename = get_weights_file_path(config, config["preload"])
             print("Preloading model {model_filename}")
@@ -73,7 +75,6 @@ class LTModel(L.LightningModule):
             self.model.load_state_dict(state["model_state_dict"])
             self.initial_epoch = state["epoch"] + 1
             self.optimizer.load_state_dict(state["optimizer_state_dict"])
-            self.global_step = state["global_step"]
             print("preloaded")
 
     def training_step(self, batch, batch_idx):
@@ -87,7 +88,9 @@ class LTModel(L.LightningModule):
         tgt_vocab_size = self.tokenizer_tgt.get_vocab_size()
         loss = self.loss_fn(proj_output.view(-1, tgt_vocab_size), label.view(-1))
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
-
+        self.train_losses.append(loss.item())
+        self.writer.add_scalar("train_loss", loss.item(), self.trainer.global_step)
+        self.writer.flush()
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -125,19 +128,36 @@ class LTModel(L.LightningModule):
             print(f"{f'TARGET: ':>12}{self.expected[idx]}")
             print(f"{f'PREDICTED: ':>12}{self.predicted[idx]}")
 
-        cer_metric = CharErrorRate()
-        cer = cer_metric(self.predicted, self.expected)
-        self.writer.add_scalar("validation cer", cer, self.global_step)
+        if self.writer:
 
-        wer_metric = WordErrorRate()
-        wer = wer_metric(self.predicted, self.expected)
-        self.writer.add_scalar("validation wer", wer, self.global_step)
+            cer_metric = CharErrorRate()
+            cer = cer_metric(self.predicted, self.expected)
+            self.writer.add_scalar("validation cer", cer, self.trainer.global_step)
+            self.writer.flush()
 
-        bleu_metric = BLEUScore()
-        bleu = bleu_metric(self.predicted, self.expected)
-        self.writer.add_scalar("validation BLEU", bleu, self.global_step)
+            wer_metric = WordErrorRate()
+            wer = wer_metric(self.predicted, self.expected)
+            self.writer.add_scalar("validation wer", wer, self.trainer.global_step)
+            self.writer.flush()
 
-        self.writer.flush()
+            bleu_metric = BLEUScore()
+            bleu = bleu_metric(self.predicted, self.expected)
+            self.writer.add_scalar("validation BLEU", bleu, self.trainer.global_step)
+
+            self.writer.flush()
+
+    def on_save_checkpoint(self, checkpoint):
+        model_filename = get_weights_file_path(self.cfg, f"{self.current_epoch}")
+        print(f"Saving model to {model_filename}")
+        torch.save(
+            {
+                "epoch": self.current_epoch,
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "global_step": self.trainer.global_step,
+            },
+            model_filename,
+        )
 
     def configure_optimizers(self):
         dataloader = self.trainer.datamodule.train_dataloader()
@@ -146,10 +166,10 @@ class LTModel(L.LightningModule):
             max_lr=self.one_cycle_best_lr,
             steps_per_epoch=len(dataloader),
             epochs=self.trainer.max_epochs,
-            pct_start=0.2,
-            div_factor=100,
+            pct_start=1 / 10 if self.config["num_epochs"] != 1 else 0.5,
+            div_factor=10,
             three_phase=False,
-            final_div_factor=100,
+            final_div_factor=10,
             anneal_strategy="linear",
         )
         return [self.optimizer], [
@@ -262,5 +282,5 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
         print("Model saved...")
 
 
-if __name__ == "__main__":
-    main(config, debug=True)
+# if __name__ == "__main__":
+#     main(config, debug=True)
