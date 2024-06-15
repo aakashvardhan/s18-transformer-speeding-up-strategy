@@ -166,7 +166,7 @@ class LTModel(L.LightningModule):
             max_lr=self.one_cycle_best_lr,
             steps_per_epoch=len(dataloader),
             epochs=self.trainer.max_epochs,
-            pct_start=1 / 10 if self.config["num_epochs"] != 1 else 0.5,
+            pct_start=1 / 10 if self.cfg["num_epochs"] != 1 else 0.5,
             div_factor=10,
             three_phase=False,
             final_div_factor=10,
