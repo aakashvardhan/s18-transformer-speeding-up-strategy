@@ -133,11 +133,13 @@ class LTModel(L.LightningModule):
             cer_metric = CharErrorRate()
             cer = cer_metric(self.predicted, self.expected)
             self.writer.add_scalar("validation cer", cer, self.trainer.global_step)
-
+            self.writer.flush()
+            
             wer_metric = WordErrorRate()
             wer = wer_metric(self.predicted, self.expected)
             self.writer.add_scalar("validation wer", wer, self.trainer.global_step)
-
+            self.writer.flush()
+            
             bleu_metric = BLEUScore()
             bleu = bleu_metric(self.predicted, self.expected)
             self.writer.add_scalar("validation BLEU", bleu, self.trainer.global_step)
