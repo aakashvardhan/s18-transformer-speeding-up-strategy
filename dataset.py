@@ -246,3 +246,34 @@ class LiTDataModule(LightningDataModule):
     def get_all_sentences(self, ds, lang):
         for item in ds:
             yield item["translation"][lang]
+
+
+
+# debug prepare_data
+
+# if __name__ == "__main__":
+#     from config_file import get_config
+#     from utils import get_model, greedy_decode
+#     import numpy as np
+
+#     config = get_config()
+
+#     dm = LiTDataModule(config)
+#     dm.prepare_data()
+#     print("Data prepared")
+
+#     train_dl = dm.train_dataloader()
+#     val_dl = dm.val_dataloader()
+
+#     # check nan values in the dataloader using numpy
+#     for batch in train_dl:
+#         for key in batch.keys():
+#             if key not in ["src_text", "tgt_text"]:
+#                 assert not np.isnan(batch[key].numpy()).any()
+                
+#     for batch in val_dl:
+#         for key in batch.keys():
+#             if key not in ["src_text", "tgt_text"]:
+#                 assert not np.isnan(batch[key].numpy()).any()
+    
+#     print("DataLoader checked for nan values")
