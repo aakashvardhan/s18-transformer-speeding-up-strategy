@@ -122,7 +122,7 @@ class LiTDataModule(LightningDataModule):
 
     def prepare_data(self):
         from utils import clean_long_text
-        
+
         ds_raw = load_dataset(
             "opus_books",
             f"{self.config['lang_src']}-{self.config['lang_tgt']}",
@@ -138,7 +138,7 @@ class LiTDataModule(LightningDataModule):
 
         self.tokenizer_src = tokenizer_src
         self.tokenizer_tgt = tokenizer_tgt
-        
+
         ds_raw = clean_long_text(self.config, ds_raw)
 
         train_ds_size = int(0.9 * len(ds_raw))
@@ -151,7 +151,7 @@ class LiTDataModule(LightningDataModule):
         self.val_ds = BillingualDataset(
             val_ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len
         )
-        
+
         max_len_src = 0
         max_len_tgt = 0
 
@@ -166,45 +166,42 @@ class LiTDataModule(LightningDataModule):
 
     def collate_fn(self, batch):
 
+        encoder_input_max = max(x["encoder_str_length"] for x in batch)
+        decoder_input_max = max(x["decoder_str_length"] for x in batch)
 
-        max_enc_input = max(item["encoder_str_length"] for item in batch)
-        max_dec_input = max(item["decoder_str_length"] for item in batch)
+        encoder_inputs = []
+        decoder_inputs = []
+        encoder_mask = []
+        decoder_mask = []
+        label = []
+        src_text = []
+        tgt_text = []
 
-        encoder_input = [item["encoder_input"][:max_enc_input] for item in batch]
-        decoder_input = [item["decoder_input"][:max_dec_input] for item in batch]
-        encoder_mask = [
-            item["encoder_mask"][0, 0, :max_enc_input]
-            .unsqueeze(0)
-            .unsqueeze(0)
-            .unsqueeze(0)
-            .int()
-            for item in batch
-        ]
-        decoder_mask = [
-            item["decoder_mask"][0, :max_dec_input, :max_dec_input]
-            .unsqueeze(0)
-            .unsqueeze(0)
-            for item in batch
-        ]
-        label = [item["label"][:max_dec_input] for item in batch]
-        src_text = [item["src_text"] for item in batch]
-        tgt_text = [item["tgt_text"] for item in batch]
-
-        # Pad sequences
-        encoder_input = pad_sequence(encoder_input, batch_first=True, padding_value=0)
-        decoder_input = pad_sequence(decoder_input, batch_first=True, padding_value=0)
-        label = pad_sequence(label, batch_first=True, padding_value=-100)  # Assuming -100 is the ignore index for loss calculation
-
-        # Stack masks
-        encoder_mask = torch.stack(encoder_mask)
-        decoder_mask = torch.stack(decoder_mask)
+        for b in batch:
+            encoder_inputs.append(b["encoder_input"][:encoder_input_max])
+            decoder_inputs.append(b["decoder_input"][:decoder_input_max])
+            encoder_mask.append(
+                (b["encoder_mask"][0, 0, :encoder_input_max])
+                .unsqueeze(0)
+                .unsqueeze(0)
+                .unsqueeze(0)
+                .int()
+            )
+            decoder_mask.append(
+                (b["decoder_mask"][0, :decoder_input_max, :decoder_input_max])
+                .unsqueeze(0)
+                .unsqueeze(0)
+            )
+            label.append(b["label"][:decoder_input_max])
+            src_text.append(b["src_text"])
+            tgt_text.append(b["tgt_text"])
 
         return {
-            "encoder_input": encoder_input,
-            "decoder_input": decoder_input,
-            "encoder_mask": encoder_mask,
-            "decoder_mask": decoder_mask,
-            "label": label,
+            "encoder_input": torch.vstack(encoder_inputs),
+            "decoder_input": torch.vstack(decoder_inputs),
+            "encoder_mask": torch.vstack(encoder_mask),
+            "decoder_mask": torch.vstack(decoder_mask),
+            "label": torch.vstack(label),
             "src_text": src_text,
             "tgt_text": tgt_text,
         }
