@@ -48,7 +48,7 @@ class LTModel(L.LightningModule):
         self.loss_fn = nn.CrossEntropyLoss(
             ignore_index=tokenizer_src.token_to_id("[PAD]"), label_smoothing=0.1
         )
-        self.optimizer = optim.AdamW(
+        self.optimizer = optim.Adam(
             self.model.parameters(), lr=self.learning_rate, eps=1e-9
         )
         self.writer = SummaryWriter(config["experiment_name"])
