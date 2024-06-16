@@ -91,13 +91,13 @@ class BillingualDataset(Dataset):
         return {
             "encoder_input": encoder_input,
             "decoder_input": decoder_input,
-            "encoder_mask": (encoder_input != self.pad_token)
-            .unsqueeze(0)
-            .unsqueeze(0)
-            .int(),
-            # encoder mask: (1, 1, seq_len) -> Has 1 when there is text and 0 when there is pad (no text)
-            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int()
-            & causal_mask(decoder_input.size(0)),
+            # "encoder_mask": (encoder_input != self.pad_token)
+            # .unsqueeze(0)
+            # .unsqueeze(0)
+            # .int(),
+            # # encoder mask: (1, 1, seq_len) -> Has 1 when there is text and 0 when there is pad (no text)
+            # "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int()
+            # & causal_mask(decoder_input.size(0)),
             # (1, seq_len) and (1, seq_len, seq_len)
             # Will get 0 for all pads. And 0 for earlier text.
             "label": label,
@@ -120,7 +120,7 @@ class LiTDataModule(LightningDataModule):
         super().__init__()
         self.config = config
 
-    def prepare_data(self):
+    def setup(self, stage=None):
         from utils import clean_long_text
 
         ds_raw = load_dataset(
@@ -134,22 +134,28 @@ class LiTDataModule(LightningDataModule):
         tgt_lang = self.config["lang_tgt"]
         seq_len = self.config["seq_len"]
 
-        tokenizer_src = self.get_or_build_tokenizer(ds_raw, src_lang)
-        tokenizer_tgt = self.get_or_build_tokenizer(ds_raw, tgt_lang)
-
-        self.tokenizer_src = tokenizer_src
-        self.tokenizer_tgt = tokenizer_tgt
-
+        self.tokenizer_src = self.get_or_build_tokenizer(ds_raw, src_lang)
+        self.tokenizer_tgt = self.get_or_build_tokenizer(ds_raw, tgt_lang)
 
         train_ds_size = int(0.9 * len(ds_raw))
         val_ds_size = len(ds_raw) - train_ds_size
         train_ds_raw, val_ds_raw = random_split(ds_raw, [train_ds_size, val_ds_size])
 
         self.train_ds = BillingualDataset(
-            train_ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len
+            train_ds_raw,
+            self.tokenizer_src,
+            self.tokenizer_tgt,
+            src_lang,
+            tgt_lang,
+            seq_len,
         )
         self.val_ds = BillingualDataset(
-            val_ds_raw, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len
+            val_ds_raw,
+            self.tokenizer_src,
+            self.tokenizer_tgt,
+            src_lang,
+            tgt_lang,
+            seq_len,
         )
 
         max_len_src = 0

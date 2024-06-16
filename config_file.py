@@ -3,18 +3,18 @@ import torch
 
 def get_config():
     return {
-        "batch_size": 128,
+        "batch_size": 64,
         "precision": "16-mixed",
         "accelerator": "cuda",
         "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         "progress_bar_refresh_rate": 10,
         "num_epochs": 18,
         "num_iter": 100,
-        "lr": 0.0003,
+        "lr": 10**-4,
         "seq_len": 160,
         "n_workers": 4,
         "num_examples": 5,
-        "one_cycle_best_lr":0.00001,
+        "one_cycle_best_lr":10**-3,
         "d_model": 512,
         "lang_src": "en",
         "lang_tgt": "it",

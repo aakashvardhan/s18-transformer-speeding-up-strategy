@@ -198,7 +198,7 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
 
     # Initialize the data module
     datamodule = LiTDataModule(cfg)
-    datamodule.prepare_data()
+    datamodule.setup()
     print("DataModule initialized...")
     tokenizer_src, tokenizer_tgt = datamodule.tokenizer_src, datamodule.tokenizer_tgt
     # Initialize TensorBoard logger
