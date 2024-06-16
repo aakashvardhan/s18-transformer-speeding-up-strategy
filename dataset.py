@@ -128,6 +128,7 @@ class LiTDataModule(LightningDataModule):
             f"{self.config['lang_src']}-{self.config['lang_tgt']}",
             split="train",
         )
+        ds_raw = clean_long_text(self.config, ds_raw)
 
         src_lang = self.config["lang_src"]
         tgt_lang = self.config["lang_tgt"]
@@ -139,7 +140,6 @@ class LiTDataModule(LightningDataModule):
         self.tokenizer_src = tokenizer_src
         self.tokenizer_tgt = tokenizer_tgt
 
-        ds_raw = clean_long_text(self.config, ds_raw)
 
         train_ds_size = int(0.9 * len(ds_raw))
         val_ds_size = len(ds_raw) - train_ds_size
