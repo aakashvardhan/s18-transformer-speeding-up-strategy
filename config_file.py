@@ -3,7 +3,7 @@ import torch
 
 def get_config():
     return {
-        "batch_size": 64,
+        "batch_size": 128,
         "precision": "16-mixed",
         "accelerator": "cuda",
         "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
