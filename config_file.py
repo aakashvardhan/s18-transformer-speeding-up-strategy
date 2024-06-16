@@ -3,14 +3,14 @@ import torch
 
 def get_config():
     return {
-        "batch_size": 16,
+        "batch_size": 64,
         "precision": "16-mixed",
         "accelerator": "cuda",
         "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         "progress_bar_refresh_rate": 10,
         "num_epochs": 18,
         "num_iter": 100,
-        "lr": 0.00003,
+        "lr": 0.0003,
         "seq_len": 160,
         "n_workers": 4,
         "num_examples": 5,

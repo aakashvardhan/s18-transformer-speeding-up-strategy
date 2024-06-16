@@ -67,6 +67,9 @@ def clean_long_text(config,text):
 
 
 def dynamic_collate_fn(batch, tokenizer_tgt):
+    
+    from dataset import causal_mask
+    
     # Dynamic batch padding
     # Find max seq_len in batch
     # max_len = max(list(map(lambda x: x["max_len"], batch)))
@@ -124,7 +127,7 @@ def dynamic_collate_fn(batch, tokenizer_tgt):
     batch_size = decoder_input.size(0)
 
     # Generate the causal mask with the correct size
-    causal_mask = causal_mask(dec_len).unsqueeze(1).repeat(batch_size, 1, 1,1)
+    causal_mask_ = causal_mask(dec_len).unsqueeze(1).repeat(batch_size, 1, 1,1)
 
     # Debugging: Print the shapes of the tensors
     # print("causal_mask new shape (after unsqueeze and repeat):", causal_mask.shape)
@@ -133,7 +136,7 @@ def dynamic_collate_fn(batch, tokenizer_tgt):
     # print("causal_mask shape (after repeat):", causal_mask.shape)
 
     # The bitwise AND operation
-    decoder_mask = decoder_mask & causal_mask.int()
+    decoder_mask = decoder_mask & causal_mask_.int()
 
     
     label = torch.stack(label)
