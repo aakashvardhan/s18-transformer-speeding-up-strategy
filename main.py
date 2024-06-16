@@ -59,6 +59,7 @@ class LTModel(L.LightningModule):
         self.train_losses = []
 
         self.save_hyperparameters()
+        self.automatic_optimization=False
         torch.autograd.set_detect_anomaly(True)
 
         self.scaler = torch.cuda.amp.GradScaler()
@@ -92,8 +93,18 @@ class LTModel(L.LightningModule):
         loss = self.loss_fn(proj_output.view(-1, tgt_vocab_size), label.view(-1))
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
 
-        # assert loss is not nan
-        # assert not torch.isnan(loss).any(), "Loss is NaN"
+        # Use torch.cuda.amp for mixed precision training
+        with torch.cuda.amp.autocast():
+            self.scaler.scale(loss).backward()
+
+        # Gradient clipping
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=0.5)
+
+        self.scaler.step(self.optimizer)
+        self.scaler.update()
+        self.optimizer.zero_grad(set_to_none=True)
+
+        self.scheduler.step()
 
         self.train_losses.append(loss.item())
         self.writer.add_scalar("train_loss", loss.item(), self.trainer.global_step)
@@ -101,17 +112,6 @@ class LTModel(L.LightningModule):
 
         return loss
 
-    def optimizer_step(
-        self,
-        epoch,
-        batch_idx,
-        optimizer,
-        optimizer_idx,
-    ):
-        self.scaler.scale(self.training_step).backward()
-        self.scaler.step(optimizer)
-        self.scaler.update()
-        optimizer.zero_grad(set_to_none=True)
 
     def validation_step(self, batch, batch_idx):
         encoder_input = batch["encoder_input"]
@@ -168,7 +168,7 @@ class LTModel(L.LightningModule):
 
     def configure_optimizers(self):
         dataloader = self.trainer.datamodule.train_dataloader()
-        scheduler = optim.lr_scheduler.OneCycleLR(
+        self.scheduler = optim.lr_scheduler.OneCycleLR(
             self.optimizer,
             max_lr=self.one_cycle_best_lr,
             steps_per_epoch=len(dataloader),
@@ -181,7 +181,7 @@ class LTModel(L.LightningModule):
         )
         return [self.optimizer], [
             {
-                "scheduler": scheduler,
+                "scheduler": self.scheduler,
                 "interval": "step",
                 "frequency": 1,
                 "monitor": "train_loss_step",
