@@ -164,47 +164,10 @@ class LiTDataModule(LightningDataModule):
         print(f"Max length of the source sentence : {max_len_src}")
         print(f"Max length of the source target : {max_len_tgt}")
 
-    def collate_fn(self, batch):
+    def dynamic_padding_collate_fn(self, batch):
+        from utils import dynamic_collate_fn
 
-        encoder_input_max = max(x["encoder_str_length"] for x in batch)
-        decoder_input_max = max(x["decoder_str_length"] for x in batch)
-
-        encoder_inputs = []
-        decoder_inputs = []
-        encoder_mask = []
-        decoder_mask = []
-        label = []
-        src_text = []
-        tgt_text = []
-
-        for b in batch:
-            encoder_inputs.append(b["encoder_input"][:encoder_input_max])
-            decoder_inputs.append(b["decoder_input"][:decoder_input_max])
-            encoder_mask.append(
-                (b["encoder_mask"][0, 0, :encoder_input_max])
-                .unsqueeze(0)
-                .unsqueeze(0)
-                .unsqueeze(0)
-                .int()
-            )
-            decoder_mask.append(
-                (b["decoder_mask"][0, :decoder_input_max, :decoder_input_max])
-                .unsqueeze(0)
-                .unsqueeze(0)
-            )
-            label.append(b["label"][:decoder_input_max])
-            src_text.append(b["src_text"])
-            tgt_text.append(b["tgt_text"])
-
-        return {
-            "encoder_input": torch.vstack(encoder_inputs),
-            "decoder_input": torch.vstack(decoder_inputs),
-            "encoder_mask": torch.vstack(encoder_mask),
-            "decoder_mask": torch.vstack(decoder_mask),
-            "label": torch.vstack(label),
-            "src_text": src_text,
-            "tgt_text": tgt_text,
-        }
+        return dynamic_collate_fn(batch, self.tokenizer_tgt)
 
     def train_dataloader(self):
         return DataLoader(
@@ -212,7 +175,7 @@ class LiTDataModule(LightningDataModule):
             batch_size=self.config["batch_size"],
             shuffle=True,
             num_workers=self.config["n_workers"],
-            collate_fn=self.collate_fn,
+            collate_fn=self.dynamic_padding_collate_fn,
             pin_memory=True,
         )
 
@@ -222,7 +185,7 @@ class LiTDataModule(LightningDataModule):
             batch_size=1,
             shuffle=False,
             num_workers=self.config["n_workers"],
-            collate_fn=self.collate_fn,
+            collate_fn=self.dynamic_padding_collate_fn,
             pin_memory=True,
         )
 
@@ -248,7 +211,6 @@ class LiTDataModule(LightningDataModule):
             yield item["translation"][lang]
 
 
-
 # debug prepare_data
 
 # if __name__ == "__main__":
@@ -270,10 +232,10 @@ class LiTDataModule(LightningDataModule):
 #         for key in batch.keys():
 #             if key not in ["src_text", "tgt_text"]:
 #                 assert not np.isnan(batch[key].numpy()).any()
-                
+
 #     for batch in val_dl:
 #         for key in batch.keys():
 #             if key not in ["src_text", "tgt_text"]:
 #                 assert not np.isnan(batch[key].numpy()).any()
-    
+
 #     print("DataLoader checked for nan values")
