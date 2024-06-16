@@ -175,9 +175,9 @@ class LTModel(L.LightningModule):
             steps_per_epoch=len(dataloader),
             epochs=self.trainer.max_epochs,
             pct_start=5/self.trainer.max_epochs,
-            div_factor=5,
+            div_factor=100,
             three_phase=False,
-            final_div_factor=10,
+            final_div_factor=100,
             anneal_strategy="linear",
         )
         return [self.optimizer], [
