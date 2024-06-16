@@ -119,10 +119,10 @@ class MultiHeadAttentionBlock(nn.Module):
         # (batch, h, seq_len, d_k) --> (batch, h, seq_len, seq_len)
         attention_scores = (query @ key.transpose(-2, -1)) / math.sqrt(d_k)
         # S16
-        # _MASKING_VALUE = -1e30 if attention_scores.dtype == torch.float32 else -1e4
+        _MASKING_VALUE = -1e+30 if attention_scores.dtype == torch.float32 else -1e+4
         if mask is not None:
             # Write a very low value (indicating -inf) to the positions where mask == 0
-            attention_scores.masked_fill_(mask == 0, -1e4)
+            attention_scores.masked_fill_(mask == 0, _MASKING_VALUE)
             # attention_scores.masked_fill_(mask == 0, value=_MASKING_VALUE)
         attention_scores = attention_scores.softmax(
             dim=-1

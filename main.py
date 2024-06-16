@@ -59,6 +59,9 @@ class LTModel(L.LightningModule):
         self.train_losses = []
 
         self.save_hyperparameters()
+        torch.autograd.set_detect_anomaly(True)
+
+        self.scaler = torch.cuda.amp.GradScaler()
 
     def forward(self, encoder_input, decoder_input, encoder_mask, decoder_mask):
         encoder_output = self.model.encode(encoder_input, encoder_mask)
@@ -95,7 +98,24 @@ class LTModel(L.LightningModule):
         self.train_losses.append(loss.item())
         self.writer.add_scalar("train_loss", loss.item(), self.trainer.global_step)
         self.writer.flush()
+
         return loss
+
+    def optimizer_step(
+        self,
+        epoch,
+        batch_idx,
+        optimizer,
+        optimizer_idx,
+        optimizer_closure,
+        on_tpu,
+        using_native_amp,
+        using_lbfgs,
+    ):
+        self.scaler.scale(self.training_step).backward()
+        self.scaler.step(optimizer)
+        self.scaler.update()
+        optimizer.zero_grad(set_to_none=True)
 
     def validation_step(self, batch, batch_idx):
         encoder_input = batch["encoder_input"]
@@ -157,7 +177,7 @@ class LTModel(L.LightningModule):
             max_lr=self.one_cycle_best_lr,
             steps_per_epoch=len(dataloader),
             epochs=self.trainer.max_epochs,
-            pct_start=5/self.trainer.max_epochs,
+            pct_start=5 / self.trainer.max_epochs,
             div_factor=100,
             three_phase=False,
             final_div_factor=100,
@@ -232,7 +252,9 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
                     save_last=True,
                 ),
                 LearningRateMonitor(logging_interval="step", log_momentum=True),
-                EarlyStopping(monitor="train_loss_step", mode="min", stopping_threshold=1.6),
+                EarlyStopping(
+                    monitor="train_loss_step", mode="min", stopping_threshold=1.6
+                ),
                 TQDMProgressBar(refresh_rate=10),
             ],
             gradient_clip_val=0.5,
