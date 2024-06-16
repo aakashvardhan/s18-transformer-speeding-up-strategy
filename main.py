@@ -41,7 +41,7 @@ class LTModel(L.LightningModule):
         self.learning_rate = self.cfg["lr"]
 
         self.model = get_model(
-            config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()
+            self.cfg, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()
         )
         self.loss_fn = nn.CrossEntropyLoss(
             ignore_index=tokenizer_src.token_to_id("[PAD]"), label_smoothing=0.1
