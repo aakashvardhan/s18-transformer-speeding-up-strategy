@@ -10,7 +10,7 @@ def get_config():
         "progress_bar_refresh_rate": 10,
         "num_epochs": 18,
         "num_iter": 100,
-        "lr": 2e-3,
+        "lr": 0.0003,
         "seq_len": 160,
         "n_workers": 4,
         "num_examples": 5,
