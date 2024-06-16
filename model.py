@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import math
-
+import torch.nn.functional as F
 
 class LayerNormalization(nn.Module):
 
@@ -249,7 +249,8 @@ class ProjectionLayer(nn.Module):
 
     def forward(self, x) -> None:
         # (batch, seq_len, d_model) --> (batch, seq_len, vocab_size)
-        return torch.log_softmax(self.proj(x), dim=-1)
+        x = self.proj(x)
+        return F.log_softmax(x, dim=-1)
 
 
 class Transformer(nn.Module):

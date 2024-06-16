@@ -91,13 +91,13 @@ class BillingualDataset(Dataset):
         return {
             "encoder_input": encoder_input,
             "decoder_input": decoder_input,
-            # "encoder_mask": (encoder_input != self.pad_token)
-            # .unsqueeze(0)
-            # .unsqueeze(0)
-            # .int(),
+            "encoder_mask": (encoder_input != self.pad_token)
+            .unsqueeze(0)
+            .unsqueeze(0)
+            .int(),
             # # encoder mask: (1, 1, seq_len) -> Has 1 when there is text and 0 when there is pad (no text)
-            # "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int()
-            # & causal_mask(decoder_input.size(0)),
+            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int()
+            & causal_mask(decoder_input.size(0)),
             # (1, seq_len) and (1, seq_len, seq_len)
             # Will get 0 for all pads. And 0 for earlier text.
             "label": label,
@@ -191,7 +191,6 @@ class LiTDataModule(LightningDataModule):
             batch_size=1,
             shuffle=False,
             num_workers=self.config["n_workers"],
-            collate_fn=self.dynamic_padding_collate_fn,
             pin_memory=True,
         )
 

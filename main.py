@@ -27,7 +27,6 @@ torch.cuda.empty_cache()
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:12240"
 
 
-
 class LTModel(L.LightningModule):
     def __init__(self, cfg, tokenizer_src, tokenizer_tgt):
         super(LTModel, self).__init__()
@@ -58,12 +57,23 @@ class LTModel(L.LightningModule):
 
         self.save_hyperparameters()
 
-    def forward(self, encoder_input, decoder_input, encoder_mask, decoder_mask):
-        encoder_output = self.model.encode(encoder_input, encoder_mask)
+    def forward(self, batch):
+        encoder_input = batch["encoder_input"]  # (batch_size, seq_len)
+        decoder_input = batch["decoder_input"]  # (batch_size, seq_len)
+
+        encoder_mask = batch["encoder_mask"]
+        decoder_mask = batch["decoder_mask"]
+
+        # Run the tensors through the encoder, decoder and the projection layer
+        encoder_output = self.model.encode(
+            encoder_input, encoder_mask
+        )  # (batch_size, seq_len, d_model)
         decoder_output = self.model.decode(
             encoder_output, encoder_mask, decoder_input, decoder_mask
-        )
-        proj_output = self.model.project(decoder_output) # (batch_size, seq_len, vocab_size)
+        )  # (batch_size, seq_len, d_model)
+        proj_output = self.model.project(
+            decoder_output
+        )  # (batch_size, seq_len, vocab_size)
         return proj_output
 
     def on_train_start(self):
@@ -77,16 +87,18 @@ class LTModel(L.LightningModule):
             print("preloaded")
 
     def training_step(self, batch, batch_idx):
-        encoder_input = batch["encoder_input"]
-        decoder_input = batch["decoder_input"]
-        encoder_mask = batch["encoder_mask"]
-        decoder_mask = batch["decoder_mask"]
-        label = batch["label"]
-
-        proj_output = self(encoder_input, decoder_input, encoder_mask, decoder_mask)
+        proj_output = self(batch)
+        label = batch["label"]  # (batch_size, seq_len)
         tgt_vocab_size = self.tokenizer_tgt.get_vocab_size()
         loss = self.loss_fn(proj_output.view(-1, tgt_vocab_size), label.view(-1))
-        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log_dict(
+            {"train_loss": loss},
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            sync_dist=True,
+            logger=True,
+        )
 
         # assert loss is not nan
         # assert not torch.isnan(loss).any(), "Loss is NaN"
@@ -157,18 +169,16 @@ class LTModel(L.LightningModule):
             max_lr=self.one_cycle_best_lr,
             steps_per_epoch=len(dataloader),
             epochs=self.trainer.max_epochs,
-            pct_start=5 / self.trainer.max_epochs,
-            div_factor=100,
-            three_phase=False,
-            final_div_factor=100,
+            pct_start=1/10 if self.trainer.max_epochs != 1 else 0.5,
+            div_factor=10,
+            three_phase=True,
+            final_div_factor=10,
             anneal_strategy="linear",
         )
         return [self.optimizer], [
             {
                 "scheduler": scheduler,
                 "interval": "step",
-                "frequency": 1,
-                "monitor": "train_loss_step",
             }
         ]
 
