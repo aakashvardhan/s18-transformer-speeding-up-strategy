@@ -253,7 +253,6 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
                 ),
                 TQDMProgressBar(refresh_rate=10),
             ],
-            gradient_clip_val=0.5,
             num_sanity_val_steps=5,
             enable_progress_bar=True,
             check_val_every_n_epoch=1,
