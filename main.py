@@ -107,10 +107,6 @@ class LTModel(L.LightningModule):
         batch_idx,
         optimizer,
         optimizer_idx,
-        optimizer_closure,
-        on_tpu,
-        using_native_amp,
-        using_lbfgs,
     ):
         self.scaler.scale(self.training_step).backward()
         self.scaler.step(optimizer)
