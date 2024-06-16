@@ -173,7 +173,7 @@ class LiTDataModule(LightningDataModule):
     def dynamic_padding_collate_fn(self, batch):
         from utils import dynamic_collate_fn
 
-        return dynamic_collate_fn(batch, self.tokenizer_tgt)
+        return dynamic_collate_fn(batch)
 
     def train_dataloader(self):
         return DataLoader(
