@@ -26,8 +26,6 @@ from utils import get_model, greedy_decode
 torch.cuda.empty_cache()
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:12240"
 
-# Load configuration
-config = get_config()
 
 
 class LTModel(L.LightningModule):
@@ -36,11 +34,11 @@ class LTModel(L.LightningModule):
         self.cfg = cfg
         self.tokenizer_src = tokenizer_src
         self.tokenizer_tgt = tokenizer_tgt
-        self.num_examples = cfg["num_examples"]
+        self.num_examples = self.cfg["num_examples"]
         self.initial_epoch = 0
 
-        self.one_cycle_best_lr = cfg["one_cycle_best_lr"]
-        self.learning_rate = config["lr"]
+        self.one_cycle_best_lr = self.cfg["one_cycle_best_lr"]
+        self.learning_rate = self.cfg["lr"]
 
         self.model = get_model(
             config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()
@@ -51,7 +49,7 @@ class LTModel(L.LightningModule):
         self.optimizer = optim.Adam(
             self.model.parameters(), lr=self.learning_rate, eps=1e-9
         )
-        self.writer = SummaryWriter(config["experiment_name"])
+        self.writer = SummaryWriter(self.cfg["experiment_name"])
 
         self.source_texts = []
         self.expected = []
@@ -59,10 +57,6 @@ class LTModel(L.LightningModule):
         self.train_losses = []
 
         self.save_hyperparameters()
-        self.automatic_optimization=False
-        torch.autograd.set_detect_anomaly(True)
-
-        self.scaler = torch.cuda.amp.GradScaler()
 
     def forward(self, encoder_input, decoder_input, encoder_mask, decoder_mask):
         encoder_output = self.model.encode(encoder_input, encoder_mask)
@@ -72,8 +66,8 @@ class LTModel(L.LightningModule):
         return self.model.project(decoder_output)
 
     def on_train_start(self):
-        if config["preload"]:
-            model_filename = get_weights_file_path(config, config["preload"])
+        if self.cfg["preload"]:
+            model_filename = get_weights_file_path(self.cfg, self.cfg["preload"])
             print("Preloading model {model_filename}")
             state = torch.load(model_filename)
             self.model.load_state_dict(state["model_state_dict"])
@@ -93,25 +87,14 @@ class LTModel(L.LightningModule):
         loss = self.loss_fn(proj_output.view(-1, tgt_vocab_size), label.view(-1))
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
 
-        # Use torch.cuda.amp for mixed precision training
-        with torch.cuda.amp.autocast():
-            self.scaler.scale(loss).backward()
-
-        # Gradient clipping
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=0.5)
-
-        self.scaler.step(self.optimizer)
-        self.scaler.update()
-        self.optimizer.zero_grad(set_to_none=True)
-
-        self.scheduler.step()
+        # assert loss is not nan
+        # assert not torch.isnan(loss).any(), "Loss is NaN"
 
         self.train_losses.append(loss.item())
         self.writer.add_scalar("train_loss", loss.item(), self.trainer.global_step)
         self.writer.flush()
 
         return loss
-
 
     def validation_step(self, batch, batch_idx):
         encoder_input = batch["encoder_input"]
@@ -168,7 +151,7 @@ class LTModel(L.LightningModule):
 
     def configure_optimizers(self):
         dataloader = self.trainer.datamodule.train_dataloader()
-        self.scheduler = optim.lr_scheduler.OneCycleLR(
+        scheduler = optim.lr_scheduler.OneCycleLR(
             self.optimizer,
             max_lr=self.one_cycle_best_lr,
             steps_per_epoch=len(dataloader),
@@ -181,7 +164,7 @@ class LTModel(L.LightningModule):
         )
         return [self.optimizer], [
             {
-                "scheduler": self.scheduler,
+                "scheduler": scheduler,
                 "interval": "step",
                 "frequency": 1,
                 "monitor": "train_loss_step",
@@ -253,6 +236,7 @@ def main(cfg, ckpt_file=None, if_ckpt=False, debug=False):
                 ),
                 TQDMProgressBar(refresh_rate=10),
             ],
+            gradient_clip_val=0.5,
             num_sanity_val_steps=5,
             enable_progress_bar=True,
             check_val_every_n_epoch=1,
