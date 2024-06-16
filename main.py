@@ -150,23 +150,6 @@ class LTModel(L.LightningModule):
 
             self.writer.flush()
 
-    def on_save_checkpoint(self, checkpoint):
-        model_filename = get_weights_file_path(self.cfg, f"{self.current_epoch}")
-        model_folder = os.path.dirname(model_filename)
-        if not os.path.exists(model_folder):
-            os.makedirs(model_folder)
-        print(f"Saving model to {model_filename}")
-        print(f"Saving model to {model_filename}")
-        torch.save(
-            {
-                "epoch": self.current_epoch,
-                "model_state_dict": self.model.state_dict(),
-                "optimizer_state_dict": self.optimizer.state_dict(),
-                "global_step": self.trainer.global_step,
-            },
-            model_filename,
-        )
-
     def configure_optimizers(self):
         dataloader = self.trainer.datamodule.train_dataloader()
         scheduler = optim.lr_scheduler.OneCycleLR(
@@ -185,7 +168,7 @@ class LTModel(L.LightningModule):
                 "scheduler": scheduler,
                 "interval": "step",
                 "frequency": 1,
-                "monitor": "train_loss",
+                "monitor": "train_loss_step",
             }
         ]
 
