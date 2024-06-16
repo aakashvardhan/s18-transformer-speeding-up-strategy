@@ -58,8 +58,8 @@ def clean_long_text(config,text):
     text = sorted(
         text, key=lambda x: len(x["translation"][src_config])
     )
-    text = [item for item in text if len(item["translation"][src_config]) <= 160
-            and len(item["translation"][tgt_config]) <= 160]
+    text = [item for item in text if len(item["translation"][src_config]) <= 150
+            and len(item["translation"][tgt_config]) <= 150]
 
     text = [item for item in text if len(item["translation"][src_config]) + 10
             >= len(item["translation"][tgt_config])]

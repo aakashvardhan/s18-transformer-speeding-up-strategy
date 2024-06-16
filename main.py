@@ -44,7 +44,7 @@ class LTModel(L.LightningModule):
             self.cfg, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()
         )
         self.loss_fn = nn.CrossEntropyLoss(
-            ignore_index=tokenizer_src.token_to_id("[PAD]"), label_smoothing=0.1
+            ignore_index=tokenizer_tgt.token_to_id("[PAD]"), label_smoothing=0.1
         )
         self.optimizer = optim.Adam(
             self.model.parameters(), lr=self.learning_rate, eps=1e-9
@@ -63,7 +63,8 @@ class LTModel(L.LightningModule):
         decoder_output = self.model.decode(
             encoder_output, encoder_mask, decoder_input, decoder_mask
         )
-        return self.model.project(decoder_output)
+        proj_output = self.model.project(decoder_output) # (batch_size, seq_len, vocab_size)
+        return proj_output
 
     def on_train_start(self):
         if self.cfg["preload"]:
