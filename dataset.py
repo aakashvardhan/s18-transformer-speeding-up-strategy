@@ -198,7 +198,7 @@ class LiTDataModule(LightningDataModule):
             tokenizer = Tokenizer(WordLevel(unk_token="[UNK]"))
             tokenizer.pre_tokenizer = Whitespace()
             trainer = WordLevelTrainer(
-                special_tokens=["[UNK]", "[SOS]", "[EOS]", "[PAD]"], min_frequency=2
+                special_tokens=["[PAD]", "[UNK]", "[SOS]", "[EOS]"], min_frequency=2
             )
             tokenizer.train_from_iterator(
                 self.get_all_sentences(ds, lang), trainer=trainer
