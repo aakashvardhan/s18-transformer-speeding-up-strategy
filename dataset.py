@@ -194,11 +194,11 @@ class LiTDataModule(LightningDataModule):
 
     def get_or_build_tokenizer(self, ds, lang):
         tokenizer_path = Path(self.config["tokenizer_file"].format(lang))
-        if not tokenizer_path.exists():
+        if not Path.exists(tokenizer_path):
             tokenizer = Tokenizer(WordLevel(unk_token="[UNK]"))
             tokenizer.pre_tokenizer = Whitespace()
             trainer = WordLevelTrainer(
-                special_tokens=["[PAD]", "[UNK]", "[SOS]", "[EOS]"], min_frequency=2
+                special_tokens=["[UNK]", "[SOS]", "[EOS]", "[PAD]"], min_frequency=2
             )
             tokenizer.train_from_iterator(
                 self.get_all_sentences(ds, lang), trainer=trainer
