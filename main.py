@@ -134,6 +134,11 @@ class LTModel(L.LightningModule):
         self.source_texts.append(src_text)
         self.expected.append(tgt_text)
         self.predicted.append(model_out_text)
+        
+    def on_validation_start(self):
+        self.source_texts = []
+        self.expected = []
+        self.predicted = []
 
     def on_validation_epoch_end(self):
 
@@ -144,6 +149,7 @@ class LTModel(L.LightningModule):
             print(f"{f'SOURCE: ':>12}{self.source_texts[idx]}")
             print(f"{f'TARGET: ':>12}{self.expected[idx]}")
             print(f"{f'PREDICTED: ':>12}{self.predicted[idx]}")
+            
 
         if self.writer:
 
