@@ -73,8 +73,8 @@ def clean_long_text(config, text):
 
 
 def dynamic_collate_fn(batch):
-    encoder_input_max = max(x["enc_token_len"] for x in batch)
-    decoder_input_max = max(x["dec_token_len"] for x in batch)
+    encoder_input_max = max(x["encoder_str_length"] for x in batch)
+    decoder_input_max = max(x["decoder_str_length"] for x in batch)
 
     max_token_len = max([encoder_input_max, decoder_input_max])
     max_token_len_2 = max_token_len + 2
