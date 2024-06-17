@@ -1,10 +1,10 @@
 # This file contains the utility functions for the project
 import torch
-from model import build_transformer
+from model import build_transformer, Transformer
 
 
 def get_model(config, src_vocab_size, tgt_vocab_size):
-    model = build_transformer(
+    model: Transformer = build_transformer(
         src_vocab_size,
         tgt_vocab_size,
         config["seq_len"],

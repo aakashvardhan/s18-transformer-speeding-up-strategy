@@ -181,8 +181,7 @@ class LiTDataModule(LightningDataModule):
             batch_size=self.config["batch_size"],
             shuffle=True,
             num_workers=self.config["n_workers"],
-            collate_fn=self.dynamic_padding_collate_fn,
-            pin_memory=True,
+            collate_fn=self.dynamic_padding_collate_fn
         )
 
     def val_dataloader(self):
@@ -190,8 +189,7 @@ class LiTDataModule(LightningDataModule):
             self.val_ds,
             batch_size=1,
             shuffle=False,
-            num_workers=self.config["n_workers"],
-            pin_memory=True,
+            num_workers=self.config["n_workers"]
         )
 
     def get_or_build_tokenizer(self, ds, lang):
