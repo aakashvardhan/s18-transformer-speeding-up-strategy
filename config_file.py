@@ -14,7 +14,7 @@ def get_config():
         "seq_len": 160,
         "n_workers": 4,
         "num_examples": 5,
-        "one_cycle_best_lr":10**-3,
+        "one_cycle_best_lr":10**-4,
         "d_model": 512,
         "lang_src": "en",
         "lang_tgt": "it",
