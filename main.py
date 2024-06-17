@@ -28,7 +28,7 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:12240"
 
 
 class LTModel(L.LightningModule):
-    def __init__(self, cfg, tokenizer_src, tokenizer_tgt):
+    def __init__(self, cfg, tokenizer_src, tokenizer_tgt, train_dataloader, learning_rate=0.0003, one_cycle_best_lr=0.0001):
         super(LTModel, self).__init__()
         self.cfg = cfg
         self.tokenizer_src = tokenizer_src
@@ -36,8 +36,9 @@ class LTModel(L.LightningModule):
         self.num_examples = self.cfg["num_examples"]
         self.initial_epoch = 0
 
-        self.one_cycle_best_lr = self.cfg["one_cycle_best_lr"]
-        self.learning_rate = self.cfg["lr"]
+        self.one_cycle_best_lr = one_cycle_best_lr
+        self.learning_rate = learning_rate
+        self.train_dataloader = train_dataloader
 
         self.model = get_model(
             self.cfg, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()
@@ -163,11 +164,10 @@ class LTModel(L.LightningModule):
             self.writer.flush()
 
     def configure_optimizers(self):
-        dataloader = self.trainer.datamodule.train_dataloader()
         scheduler = optim.lr_scheduler.OneCycleLR(
             self.optimizer,
             max_lr=self.one_cycle_best_lr,
-            steps_per_epoch=len(dataloader),
+            steps_per_epoch=len(self.train_dataloader),
             epochs=self.trainer.max_epochs,
             pct_start=6/self.trainer.max_epochs,
             div_factor=100,

@@ -13,7 +13,7 @@ def get_config():
         "lr": 0.0003,
         "seq_len": 160,
         "n_workers": 4,
-        "num_examples": 5,
+        "num_examples": 3,
         "one_cycle_best_lr":0.0001,
         "d_model": 512,
         "lang_src": "en",
