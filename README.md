@@ -68,14 +68,15 @@ Epoch 16: 100%
 ```
 
 
-<div class="grid-container">
-    <div class="grid-item">
-        <img src="https://github.com/aakashvardhan/s18-transformer-speeding-up-strategy/blob/main/asset/train_loss.png" alt="Training Loss">
-    </div>
-    <div class="grid-item">
-        <img src="https://github.com/aakashvardhan/s18-transformer-speeding-up-strategy/blob/main/asset/val_cer.png" alt="Validation Character Error Rate">
-    </div>
-    <div class="grid-item">
-        <img src="https://github.com/aakashvardhan/s18-transformer-speeding-up-strategy/blob/main/asset/val_wer.png" alt="Validation Word Error Rate">
-    </div>
-</div>
+<table>
+  <tr>
+    <td><img src="https://github.com/aakashvardhan/s18-transformer-speeding-up-strategy/blob/main/asset/train_loss.png" alt="Plot 1" style="width: 100%;"/></td>
+    <td><img src="https://github.com/aakashvardhan/s18-transformer-speeding-up-strategy/blob/main/asset/val_cer.png" alt="Plot 2" style="width: 100%;"/></td>
+    <td><img src="https://github.com/aakashvardhan/s18-transformer-speeding-up-strategy/blob/main/asset/val_wer.png" alt="Plot 3" style="width: 100%;"/></td>
+  </tr>
+  <tr>
+    <td align="center">Training Loss</td>
+    <td align="center">Validation Character Error Rate</td>
+    <td align="center">Validation Word Error Rate</td>
+  </tr>
+</table>
