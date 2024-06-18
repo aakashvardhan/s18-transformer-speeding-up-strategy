@@ -70,13 +70,13 @@ Epoch 16: 100%
 ```html
 <div class="grid-container">
     <div class="grid-item">
-        <img src="image1.jpg" alt="Image 1">
+        <img src="https://github.com/aakashvardhan/s18-transformer-speeding-up-strategy/blob/main/asset/train_loss.png" alt="Training Loss">
     </div>
     <div class="grid-item">
-        <img src="image2.jpg" alt="Image 2">
+        <img src="https://github.com/aakashvardhan/s18-transformer-speeding-up-strategy/blob/main/asset/val_cer.png" alt="Validation Character Error Rate">
     </div>
     <div class="grid-item">
-        <img src="image3.jpg" alt="Image 3">
+        <img src="https://github.com/aakashvardhan/s18-transformer-speeding-up-strategy/blob/main/asset/val_wer.png" alt="Validation Word Error Rate">
     </div>
 </div>
 ```
