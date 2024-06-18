@@ -80,3 +80,7 @@ Epoch 16: 100%
     <td align="center">Validation Word Error Rate</td>
   </tr>
 </table>
+
+## Conclusion
+
+In this project, we explored various optimization techniques to speed up the training of the Transformer model. We experimented with mixed precision training, gradient clipping, OneCycle LR scheduler, stacking multiple encoder and decoder layers, and dynamic batch padding. The results show that these optimization techniques significantly speed up the training process and improve the translation quality of the model. We achieved a Validation Character Error Rate of 0.1279 and a Validation Word Error Rate of 0.411 after 16 epochs of training. The model's performance can be further improved by fine-tuning the hyperparameters and increasing the training duration. Overall, the optimization techniques presented in this project can be used to speed up the training of the Transformer model and improve its performance on various natural language processing tasks.
