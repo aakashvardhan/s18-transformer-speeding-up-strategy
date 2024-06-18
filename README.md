@@ -67,7 +67,7 @@ Epoch 16: 100%
  PREDICTED: — Che vuoi ? — le disse asciutto . — Siamo .
 ```
 
-```html
+
 <div class="grid-container">
     <div class="grid-item">
         <img src="https://github.com/aakashvardhan/s18-transformer-speeding-up-strategy/blob/main/asset/train_loss.png" alt="Training Loss">
@@ -79,4 +79,3 @@ Epoch 16: 100%
         <img src="https://github.com/aakashvardhan/s18-transformer-speeding-up-strategy/blob/main/asset/val_wer.png" alt="Validation Word Error Rate">
     </div>
 </div>
-```
