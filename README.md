@@ -8,7 +8,7 @@
 
 ## Introduction
 
-The Transformation model is known for its parallelization capabilities and its ability to capture long-range dependencies in sequences. However, training the Transformer model can be computationally expensive due to the large number of parameters and the complexity of the model architecture. In this project, we explore various optimization techniques to speed up the training of the Transformer model. We experiment with various optimization techniques to reduce the training time of the model. We evaluate the performance of these techniques on a machine translation task using the opus-book English to Italian dataset.
+The Transformer model is known for its parallelization capabilities and its ability to capture long-range dependencies in sequences. However, training the Transformer model can be computationally expensive due to the large number of parameters and the complexity of the model architecture. In this project, we explore various optimization techniques to speed up the training of the Transformer model. We evaluate the performance of these techniques on a machine translation task using the opus-book English to Italian dataset.
 
 ## Key Improvements
 
